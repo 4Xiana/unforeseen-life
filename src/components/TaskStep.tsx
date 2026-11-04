@@ -2,21 +2,22 @@ import { useState, useRef, useEffect, useId } from 'react';
 import type { PublishedStep, SubmissionType } from '../types';
 import { VoiceButton } from './VoiceButton';
 import { useSpeechInput } from '../hooks/useSpeechInput';
+import { StepTimer } from './StepTimer';
+import type { StepTimerApi } from '../hooks/useStepTimer';
 
 // ── 步骤提交动作区：聊天任务卡与任务进度抽屉共用一套 ──
-// check=就位打卡按钮；text=文字证物输入；photo=拍照 + 回答（两者齐备才放行）。
+// text=文字证物输入；photo=拍照 + 回答（两者齐备才放行）。
 // compact 给抽屉里的窄卡片用：更小的留白与字号。
 
 interface StepSubmitAreaProps {
   step: PublishedStep;
-  onCheck: () => void;
   onSubmitText: (text: string) => void;
   onSubmitPhoto: (file: File, description: string) => void;
   disabled?: boolean;
   compact?: boolean;
 }
 
-export function StepSubmitArea({ step, onCheck, onSubmitText, onSubmitPhoto, disabled, compact }: StepSubmitAreaProps) {
+export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, compact }: StepSubmitAreaProps) {
   const [textValue, setTextValue] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function StepSubmitArea({ step, onCheck, onSubmitText, onSubmitPhoto, dis
     if (!textValue.trim() || disabled) return;
     textVoice.reset();
     onSubmitText(textValue.trim());
-    setTextValue('');
+    // 不主动清空：驳回时玩家可直接在原文上改几个字重交；通过则该步变 done、组件卸载，状态自然销毁
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,18 +58,6 @@ export function StepSubmitArea({ step, onCheck, onSubmitText, onSubmitPhoto, dis
   };
 
   const primaryBtn = `${compact ? 'py-2.5 text-[14px]' : 'py-3 text-[16px]'} w-full bg-moss text-ink font-display rounded-full shadow-btn hover:bg-moss-deep hover:text-card transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 px-5`;
-
-  if (step.submissionType === 'check') {
-    return (
-      <button onClick={onCheck} disabled={disabled} className={primaryBtn}>
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M5 8L7 10L11 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        确认完成
-      </button>
-    );
-  }
 
   if (step.submissionType === 'text') {
     return (
@@ -190,15 +179,16 @@ export function StepSubmitArea({ step, onCheck, onSubmitText, onSubmitPhoto, dis
 interface Props {
   step: PublishedStep;
   total: number;
-  onCheck: () => void;
   onSubmitText: (text: string) => void;
   onSubmitPhoto: (file: File, description: string) => void;
   disabled?: boolean;
   // 历史步骤：动作区替换为"已完成"的存档标记
   done?: boolean;
+  // 当前进行步的软节奏计时器（App 层唯一实例下传；历史步为 null）
+  timer?: StepTimerApi | null;
 }
 
-export function TaskStep({ step, total, onCheck, onSubmitText, onSubmitPhoto, disabled, done }: Props) {
+export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, done, timer }: Props) {
   const stepNum = step.index + 1;
 
   return (
@@ -276,6 +266,12 @@ export function TaskStep({ step, total, onCheck, onSubmitText, onSubmitPhoto, di
           </div>
         )}
 
+        {!done && timer?.active && (
+          <div className="mb-4 flex justify-end">
+            <StepTimer timer={timer} />
+          </div>
+        )}
+
         <div>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-5 h-px bg-fog-light"/>
@@ -296,7 +292,6 @@ export function TaskStep({ step, total, onCheck, onSubmitText, onSubmitPhoto, di
           ) : (
             <StepSubmitArea
               step={step}
-              onCheck={onCheck}
               onSubmitText={onSubmitText}
               onSubmitPhoto={onSubmitPhoto}
               disabled={disabled}
@@ -310,7 +305,6 @@ export function TaskStep({ step, total, onCheck, onSubmitText, onSubmitPhoto, di
 
 export function submissionTypeShort(type: SubmissionType): string {
   switch (type) {
-    case 'check': return '就位打卡';
     case 'text': return '交文字证物';
     case 'photo': return '拍照 + 回答';
   }

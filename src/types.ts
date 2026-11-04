@@ -1,6 +1,6 @@
 export type FSMState = 'S0' | 'S1' | 'S2' | 'S3';
 
-export type SubmissionType = 'check' | 'text' | 'photo';
+export type SubmissionType = 'text' | 'photo';
 
 export type QuestCategory = 'explore' | 'organize' | 'create' | 'connect' | 'sense';
 
@@ -10,6 +10,8 @@ export interface ActivityStep {
   submissionType: SubmissionType;
   completionCriteria: string;
   proofPrompt?: string;
+  // 这一步的建议节奏（秒）：缺省=不计时。软参考，不是限时
+  suggestedSeconds?: number;
 }
 
 export interface ActivityPlan {
@@ -29,6 +31,8 @@ export interface PublishedStep {
   submissionType: SubmissionType;
   submissionPrompt?: string;
   proofPrompt?: string;
+  // 建议节奏（秒），后端按玩家空闲时长校正后下发；0/缺省=这一步不计时
+  suggestedSeconds?: number;
 }
 
 export interface ChatMessage {
@@ -81,6 +85,20 @@ export interface EnvInfo {
 
 // ── 支线手账（集印册 + 成就墙），与服务端 HandbookView 对应 ──────────────────
 
+export interface StepEvidence {
+  type: 'text' | 'photo';
+  text?: string;
+  photoUrl?: string;
+  at: string;
+}
+
+export interface StepDetail {
+  instruction: string;
+  submissionType: SubmissionType;
+  proofPrompt?: string;
+  evidence?: StepEvidence;
+}
+
 export interface QuestRecord {
   id: string;
   title: string;
@@ -89,6 +107,7 @@ export interface QuestRecord {
   steps: number;
   evidence?: string;
   date: string;
+  stepDetails?: StepDetail[];
 }
 
 export interface BadgeState {
@@ -113,4 +132,65 @@ export interface HandbookView {
   quests: QuestRecord[];
   badges: BadgeState[];
   stats: HandbookStats;
+}
+
+// ── 玩家喜好档案（长期记忆），与服务端 UserProfile 对应 ─────────────────────
+// 问题轴与种子库标签对齐：体力 / 新奇度 / 人群 / 预算 / 玩法机制
+
+export type EnergyPref = '坐' | '慢' | '动' | 'any';
+export type SocialPref = 'solo' | 'pair' | 'group' | 'any';
+export type BudgetPref = 'free' | 'low' | 'any';
+/** 0 = 都行；1 稳妥；2 新鲜；3 脑洞 */
+export type NoveltyPref = 0 | 1 | 2 | 3;
+export type MechanismPref =
+  | '收集图鉴' | '随机委托' | '视角重赋' | '规则限制' | '定点观察'
+  | '触感心流' | '盲盒猜谜' | '角色扮演' | '连接动作' | '留痕收尾';
+
+export interface UserProfile {
+  clientId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  onboarded: boolean;
+  energy: EnergyPref;
+  novelty: NoveltyPref;
+  social: SocialPref;
+  budget: BudgetPref;
+  mechs: MechanismPref[];
+  interests: string;
+  avoids: string;
+  /** Pair-wise 快速对比选择：pairId -> 选中 A/B */
+  pairVotes: Record<string, 'A' | 'B'>;
+}
+
+export interface SaveProfileInput {
+  energy: EnergyPref;
+  novelty: NoveltyPref;
+  social: SocialPref;
+  budget: BudgetPref;
+  mechs: MechanismPref[];
+  interests: string;
+  avoids: string;
+  pairVotes: Record<string, 'A' | 'B'>;
+}
+
+// ── Pair-wise 真实任务对比（GET /api/quest-pairs）──────────────────────────
+
+export interface PairSeed {
+  id: string;
+  title: string;
+  text: string;
+  min: number;
+  scenes: string[];
+  energy: string;
+  budget: '0' | '低';
+}
+
+export interface QuestPair {
+  id: string;
+  /** 问题用时长从句：如 "只有 10 分钟" */
+  when: string;
+  /** 短档名：如 "10 分钟" */
+  timeShort: string;
+  a: PairSeed;
+  b: PairSeed;
 }

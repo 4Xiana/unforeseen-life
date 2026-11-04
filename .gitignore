@@ -21,7 +21,9 @@ dist-ssr
 *.tsbuildinfo
 .trae/
 server/data/*.json
+server/data/evidence/
 !server/data/.gitkeep
+docs/screenshots.zip
 
 # Editor directories and files
 .vscode/*

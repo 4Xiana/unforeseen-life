@@ -16,6 +16,13 @@ export const CATEGORY_META: Record<QuestCategory, { label: string; hint: string 
 
 export const CATEGORY_IDS = Object.keys(CATEGORY_META) as QuestCategory[];
 
+export interface StepEvidence {
+  type: 'text' | 'photo';
+  text?: string;
+  photoUrl?: string;
+  at: string;
+}
+
 export interface QuestRecord {
   id: string;
   title: string;
@@ -24,6 +31,13 @@ export interface QuestRecord {
   steps: number;
   evidence?: string;
   date: string;
+  /** 每一步的指引与玩家提交的证物（用于记录页展示完整过程） */
+  stepDetails?: {
+    instruction: string;
+    submissionType: 'text' | 'photo';
+    proofPrompt?: string;
+    evidence?: StepEvidence;
+  }[];
 }
 
 export interface Handbook {
@@ -192,6 +206,7 @@ export interface RecordQuestInput {
   tags: string[];
   steps: number;
   evidence?: string;
+  stepDetails?: QuestRecord['stepDetails'];
 }
 
 export async function recordQuest(
@@ -212,6 +227,7 @@ export async function recordQuest(
     steps: input.steps,
     evidence: input.evidence?.slice(0, 60),
     date: new Date().toISOString(),
+    stepDetails: input.stepDetails,
   };
   store[clientId].quests.push(rec);
   await persist();
@@ -221,7 +237,7 @@ export async function recordQuest(
   return { view, newBadges };
 }
 
-// ── 喂给小闲的"记得玩家"摘要（注入运行时上下文）────────────────────────────
+// ── 喂给吱呀的"记得玩家"摘要（注入运行时上下文）────────────────────────────
 
 export function buildHandbookBrief(view: HandbookView): string {
   const { stats, quests, badges } = view;

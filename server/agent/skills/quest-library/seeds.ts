@@ -112,7 +112,7 @@ export const SEEDS: Seed[] = [
   S({ id: 'tree-hug-route', title: '抱树路线', text: '找 3 棵形态不同的大树各抱 20 秒（或手掌贴树皮），评最舒服的一棵。', group: 'outdoor', mech: '盲盒猜谜', cat: 'sense', scenes: ['户外'], min: 15, people: ['独'], budget: '0', energy: '慢', who: ['i人'], nov: 2 }),
   S({ id: 'graffiti-tour', title: '涂鸦墙巡礼', text: '找一面涂鸦墙或彩绘配电箱，拍 5 幅作品，给最怪的一幅起个展览标题。', group: 'outdoor', mech: '收集图鉴', cat: 'explore', scenes: ['户外', '店'], min: 30, people: ['独', '双'], budget: '0', energy: '慢', nov: 1 }),
   S({ id: 'playground-replay', title: '大人返场', text: '去小区或公园的儿童区，把滑梯、秋千、单杠 3 样器材挨个玩一遍。', group: 'outdoor', mech: '角色扮演', cat: 'sense', scenes: ['户外'], min: 20, people: ['独', '双'], budget: '0', energy: '动', who: ['e人'], nov: 2 }),
-  S({ id: 'chess-corner-audience', title: '棋摊解说员', text: '在公园棋摊边看下完一盘棋，假装自己是体育解说员，在心里点评最关键的三步。', group: 'outdoor', mech: '定点观察', cat: 'sense', scenes: ['户外'], min: 15, people: ['独'], budget: '0', energy: '坐', who: ['i人'], nov: 3 }),
+  S({ id: 'chess-corner-audience', title: '棋摊解说员', text: '在公园棋摊边看下完一盘棋，假装自己是体育解说员，挑出最关键的三步，各用一句话写成解说词。', group: 'outdoor', mech: '定点观察', cat: 'sense', scenes: ['户外'], min: 15, people: ['独'], budget: '0', energy: '坐', who: ['i人'], nov: 3 }),
   S({ id: 'window-box-garden', title: '窗台花巡游', text: '抬头拍 5 户人家阳台外或窗台上的花，评出"最用心的窗台"。', group: 'outdoor', mech: '收集图鉴', cat: 'explore', scenes: ['户外', '家'], min: 20, people: ['独'], budget: '0', energy: '慢', nov: 2 }),
   S({ id: 'street-musician-3song', title: '街头三首歌', text: '遇到街头演出就站着听完 3 首，结束后认真鼓掌（愿意可投币）。', group: 'outdoor', mech: '定点观察', cat: 'sense', scenes: ['户外', '店'], min: 15, people: ['独', '双'], budget: '低', energy: '慢', nov: 1 }),
   S({ id: 'errand-timed', title: '跑腿竞速', text: '把取快递、买东西当一趟竞速，计单程时间，下次试试打破纪录。', group: 'outdoor', mech: '规则限制', cat: 'sense', scenes: ['户外', '通勤'], min: 15, people: ['独'], budget: '0', energy: '动', nov: 2 }),
@@ -146,8 +146,13 @@ export const SEEDS: Seed[] = [
   S({ id: 'night-market-lights', title: '夜市灯光收集', text: '逛夜市拍 5 种灯（灯笼、串灯、霓虹招牌），评出最暖的一盏。', group: 'outdoor', mech: '收集图鉴', cat: 'sense', scenes: ['户外', '夜'], min: 30, people: ['独', '双'], budget: '0', energy: '慢', nov: 2 }),
   S({ id: 'geocache-first', title: '城市藏宝', text: '用城市探索或地理藏宝类 App 找一个附近的藏宝点，找到后留个小记号。', group: 'outdoor', mech: '角色扮演', cat: 'explore', scenes: ['户外'], min: 40, people: ['独', '双'], budget: '0', energy: '慢', who: ['e人'], nov: 3 }),
 
+  // 一日量级（约 8 小时，配对"一整天"档）：向外远征 vs 宅家深耕
+  S({ id: 'full-day-cross-city', title: '横穿城市一日', text: '清晨出发，沿一条地铁线或主路横穿整座城市，只靠步行和公交，天黑前走到城市另一头，拍 3 张"城市边界"照片。', group: 'outdoor', mech: '规则限制', cat: 'explore', scenes: ['户外', '通勤'], min: 480, people: ['独', '双'], budget: '低', energy: '动', nov: 2 }),
+  S({ id: 'full-day-wandering', title: '无目的漫游一日', text: '带水和本子出门一整天，不设目的地不赶时间，走累就坐、饿了就吃，晚上在当天最喜欢的地方拍一张。', group: 'outdoor', mech: '随机委托', cat: 'explore', scenes: ['户外'], min: 480, people: ['独', '双'], budget: '低', energy: '慢', nov: 3 }),
+  S({ id: 'full-day-home-project', title: '宅家深耕日', text: '不出门，挑一件平时觉得"要攒一整天才敢开工"的事做：拼完大型积木、整理一整年照片、做完一本小册，中午认真给自己做顿饭，拍一张"今日大作"。', group: 'home', mech: '留痕收尾', cat: 'create', scenes: ['家'], min: 480, people: ['独'], budget: '低', energy: '坐', nov: 2 }),
+
   // ── B. 店里·商场·花市 ─────────────────────────────────────────────
-  S({ id: 'supermarket-beach', title: '超市赶海', text: '不直奔目标，慢慢扫一遍水产或蔬果区，像赶海一样不错过角落，找一个从没仔细看过的东西盯它一分钟。', group: 'shop', mech: '视角重赋', cat: 'sense', scenes: ['店'], min: 30, people: ['独', '双'], budget: '0', energy: '慢', nov: 3 }),
+  S({ id: 'supermarket-beach', title: '超市赶海', text: '不直奔目标，像赶海一样慢慢扫一遍水产或蔬果区、不错过角落，找一个从没仔细看过的东西盯一分钟，再用三个词写下它的样子。', group: 'shop', mech: '视角重赋', cat: 'sense', scenes: ['店'], min: 30, people: ['独', '双'], budget: '0', energy: '慢', nov: 3 }),
   S({ id: 'conbini-blindbox', title: '便利店盲盒', text: '闭眼在零食区走三步停下，拿手边第一件东西，尝一口，写一句评价。', group: 'shop', mech: '盲盒猜谜', cat: 'sense', scenes: ['店'], min: 15, people: ['独'], budget: '低', energy: '坐', nov: 2 }),
   S({ id: 'shelf-archaeology', title: '货架考古', text: '在某个货架找包装最老、名字最怪、或最临近保质期的商品，拍一件"货架文物"并写它的年代设定。', group: 'shop', mech: '视角重赋', cat: 'explore', scenes: ['店'], min: 15, people: ['独', '双'], budget: '0', energy: '慢', nov: 3 }),
   S({ id: 'weird-booklist', title: '奇怪主题书单', text: '在书店按一个怪规则搭 3 本书——书名带数字、全是蓝色封面、作者姓氏和你一样。', group: 'shop', mech: '收集图鉴', cat: 'explore', scenes: ['店', '场馆'], min: 30, people: ['独', '双'], budget: '0', energy: '慢', nov: 2 }),
@@ -578,7 +583,7 @@ export const SEEDS: Seed[] = [
   S({ id: 'meeting-sketch', title: '会议画同事', text: '开长会时在本子上给 3 个参会者画火柴人漫画，散会自留。', group: 'work', mech: '视角重赋', cat: 'create', scenes: ['工位'], min: 20, people: ['独'], budget: '0', energy: '坐', who: ['打工人', 'i人'], nov: 3 }),
   S({ id: 'park-lunch', title: '公园午餐', text: '把午餐打包带到附近公园或长椅上吃 20 分钟，不看工作消息。', group: 'work', mech: '规则限制', cat: 'sense', scenes: ['工位', '户外'], min: 25, people: ['独'], budget: '0', energy: '慢', who: ['打工人', 'i人'], nov: 1 }),
   S({ id: 'wallpaper-monthly', title: '月换壁纸', text: '每月初做或找一张新壁纸，顺便整理电脑桌面图标。', group: 'work', mech: '触感心流', cat: 'organize', scenes: ['工位'], min: 15, people: ['独'], budget: '0', energy: '坐', who: ['打工人'], nov: 2 }),
-  S({ id: 'elevator-bgm', title: '电梯 BGM', text: '坐电梯时在心里给电梯配 BGM，走出电梯门那一刻"歌曲结束"。', group: 'work', mech: '视角重赋', cat: 'sense', scenes: ['工位', '通勤'], min: 2, people: ['独'], budget: '0', energy: '坐', who: ['i人', '打工人'], nov: 3 }),
+  S({ id: 'elevator-bgm', title: '电梯 BGM', text: '坐电梯时给这段电梯配乐、并起一个歌名，走出电梯门那一刻"歌曲结束"——把这个歌名记下来。', group: 'work', mech: '视角重赋', cat: 'sense', scenes: ['工位', '通勤'], min: 2, people: ['独'], budget: '0', energy: '坐', who: ['i人', '打工人'], nov: 3 }),
   S({ id: 'off-work-reward', title: '下班奖励仪式', text: '下班路上给自己定一个小奖励（一支冰淇淋、一集剧），认真兑现。', group: 'work', mech: '留痕收尾', cat: 'sense', scenes: ['通勤', '店'], min: 15, people: ['独'], budget: '低', energy: '坐', who: ['打工人'], nov: 1 }),
   S({ id: 'desk-thankyou-note', title: '便利贴感谢', text: '给帮过忙的同事留一张手写感谢便利贴，贴他屏幕边上。', group: 'work', mech: '连接动作', cat: 'connect', scenes: ['工位'], min: 5, people: ['独'], budget: '0', energy: '坐', who: ['打工人', 'e人'], nov: 2 }),
   S({ id: 'commute-exit-early', title: '早一站下车', text: '地铁或公交早下一站，走 15 分钟到公司，顺路买早餐。', group: 'work', mech: '规则限制', cat: 'explore', scenes: ['通勤', '户外'], min: 20, people: ['独'], budget: '低', energy: '慢', who: ['打工人'], nov: 2 }),

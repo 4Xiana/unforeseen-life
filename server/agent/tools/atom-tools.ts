@@ -11,6 +11,8 @@ import {
   TOOL_HINTS,
   SUBMISSION_PROMPTS,
 } from '../prompts/index.js';
+import { reconcileStepDurations } from './step-pace.js';
+import type { EvidenceReview } from '../review/evidence-reviewer.js';
 
 export type AtomTool = ReturnType<typeof tool>;
 
@@ -40,9 +42,17 @@ export interface ToolContext {
    */
   classifyTurnVoice?: () => 'accepted' | 'rejected' | 'unclear';
   /**
+   * 本轮独立「证物验收员」的结构化判定（仅证物轮 submit_text/submit_photo 存在）。
+   * 这是推进流程的最高权威：
+   * - available + verdict='reject' → 硬拦截 publish_step / S3，无论台词说什么；
+   * - available + verdict='pass' → 允许推进（仍需先说话的温度门）；
+   * - available=false（验收服务故障）→ 降级用 classifyTurnVoice 台词门，绝不默认放行。
+   */
+  evidenceReview?: EvidenceReview;
+  /**
    * 本轮是否为"玩家提交需核对内容的证物"轮（submit_text/submit_photo）。
-   * 这类证物轮里发下一步卡 = 判定验收通过，台词必须有明确的通过信号（白名单）；
-   * check 就位打卡（点了就过、无内容可核）与选活动入场发首张卡都不受此限。
+   * 这类证物轮里发下一步卡 = 判定验收通过，必须有验收员 pass（或降级时台词明确通过）；
+   * 选活动入场发首张卡不受此限。
    */
   isContentProofTurn?: () => boolean;
   /**
@@ -60,7 +70,7 @@ export interface ToolContext {
 }
 
 export function createAtomTools(ctx: ToolContext): AtomTool[] {
-  const { memory, fsm, emit, onStateChange, hasSpoken, classifyTurnVoice, isContentProofTurn, isGraduationReady, getCurrentEnv } = ctx;
+  const { memory, fsm, emit, onStateChange, hasSpoken, classifyTurnVoice, evidenceReview, isContentProofTurn, isGraduationReady, getCurrentEnv } = ctx;
   const tools: AtomTool[] = [];
 
   const saveUserInfo = tool({
@@ -88,26 +98,16 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
       if (args.mood !== undefined) patch.mood = args.mood;
       const updated = memory.updateCollectedInfo(patch);
 
-      // 快启但留一个"可选偏好"入口：S0 拿到时长的当轮，问一句开放、不定向的
-      // 偏好邀请并停下；若时长上一轮已记下，这轮是玩家在回应邀请，直接推进出卡。
+      // 快启：S0 只要时长到手（不管是第一条就带着、还是刚答的），当轮直接推进出卡——
+      // 一句承接 → request_state_change S1 → propose_activities，不再停下来问偏好。
       const inS0 = fsm.current === 'S0';
       const hasTime = !!updated.freeTime;
-      const timeJustObtained = args.freeTime !== undefined;
       let hint: string;
-      if (inS0 && hasTime && timeJustObtained) {
+      if (inS0 && hasTime) {
         hint = [
-          '空闲时长保存成功，工具该调就调（以后玩家每说一条新信息都要继续 save_user_info，不会自动保存）。注意玩家不需要知道保存动作——台词里绝不说"记下了/我记一下/先存一下"这类话。你现在仍在 S0——不要 request_state_change、也不要开始推荐（出卡在 S1）。',
-          '这一轮你只需做一件事：用一句轻松、开放的话，邀请玩家补充"可选"的大方向偏好——像朋友出主意、不像发表格：把大方向包成带画面的二选一问出来（"想瘫着来点安静的，还是翻出点什么动动手？""想一分钱不花，还是折腾点小材料？"），问感受、不问档案（不查"室内/户外/预算"这种分类账），一两个方向带过即可。',
-          '注意：不要落到具体活动/具体玩法（"想不想拍照/做手工/散步"这类一律不问），也不要列成清单逼 TA 逐项填；说到哪个算哪个，也欢迎什么都不说。',
-          '同时明确告诉 TA：没什么要补充的，直接点下面的「没有啦，请开始构思吧」按钮，你就去张罗。这句按钮提示和问题放在同一段里说完，不换行、不分两段。',
-          '问完这一句就停下等玩家回应，本轮结束，不要再追问第二件事、不要输出活动内容。同一个邀请整轮只问一遍——绝不换个说法、换个画面把同一个问题问第二次（一轮只有一个问句）。',
-        ].join('\n');
-      } else if (inS0 && hasTime) {
-        // 时长上一轮已保存：玩家这条消息是在回应偏好邀请（补充偏好/说开始），当轮推进出卡
-        hint = [
-          '信息保存成功（工具照调，玩家不需要知道保存动作，台词里别提"记下了/存档"这类话）。时长上一轮已经有了，玩家这条消息就是在回应偏好邀请——不要再发邀请、不要反问、不要停在 S0。',
-          '这一轮：先用一句话接住玩家刚说的内容（TA 补充了偏好就接住偏好，说"开始/没有啦"就接住"这就去张罗"），然后 request_state_change(target_state="S1")；切换成功后系统会把 S1 手册、素材库和设计规范一并展开（不用再 get_skill），同一轮里直接构思并 propose_activities 出卡（卡片只填标题/悬念/类别/标签，不用写步骤）。',
-          '全轮文字就这一句承接的话：可以先点一个眼前画面或玩家此刻的状态，再像把任务板转过来给玩家看（落到"板上新挂了几条支线、挑一条顺眼的"，如"刚歇下来？——板上新挂了几条，挑一条顺眼的？"），不说"开张/找了几件小事"这类话；不能一句话不说默默转场、也不要分两段。',
+          '空闲时长保存成功，工具该调就调（以后玩家每说一条新信息都要继续 save_user_info，不会自动保存）。注意玩家不需要知道保存动作——台词里绝不说"记下了/我记一下/先存一下"这类话。',
+          '你仍在 S0，但这一轮不要停下来问任何问题、也不要反问：玩家已经给了时长，直接推进——先用一句话接住玩家刚说的内容（TA 说了场景/心情/偏好就自然带进，没说就点一个眼前画面或此刻的状态），同一句引向支线（"替你留了几条支线，看看哪一条合心意"），然后 request_state_change(target_state="S1")；切换成功后 S1 手册、素材库和设计规范会自动展开（不用 get_skill），同一轮里直接 propose_activities 出卡（卡片只填标题/悬念/类别/标签，不写步骤）。',
+          '全轮文字就这一句承接的话，不说"开张/找了几件小事"这类话；不能一句话不说默默转场发卡（会被系统拒绝），也不要分两段。',
         ].join('\n');
       } else if (hasTime) {
         hint = TOOL_HINTS.save_user_info_hasFreeTime;
@@ -133,6 +133,19 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
       reason: z.string().describe('为什么要切换到这个状态，简短说明理由'),
     }),
     execute: async (args) => {
+      // 最高权威：证物轮验收员已判 reject，则无论台词说没说"完成"都不许毕业
+      if (
+        args.target_state === 'S3' &&
+        isContentProofTurn && isContentProofTurn() &&
+        evidenceReview?.available && evidenceReview.verdict === 'reject'
+      ) {
+        return JSON.stringify({
+          success: false,
+          error: `验收员判定证物不通过（${evidenceReview.reason}），不能毕业。`,
+          currentState: fsm.current,
+          hint: `留在 S2，用你自己的话驳回并说明怎么补：${evidenceReview.whatNeeded || '对照完成标准重新提交最后一步证物'}。玩家补料合格后再申请 S3。`,
+        });
+      }
       // 毕业护栏：切到 S3 = 判定全部证物达标完成。必须有明确的"完成/达标/恭喜/收工"
       // 判定才允许；仅引用"下一步/最后一步"来布置任务、或在追问补交、或没下完成结论，
       // 一律不许毕业——堵"嘴上还在布置最后一步/让玩家重交，手上却切到 S3 庆祝"的矛盾。
@@ -179,7 +192,7 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
       activities: z.array(z.object({
         id: z.string().describe('活动唯一标识，用简短英文/数字如"act1"、"tea_break"'),
         title: z.string().describe('活动标题，简洁有趣，6字以内'),
-        hook: z.string().describe('一句话悬念/吸引力描述，20字以内'),
+        hook: z.string().describe('一句话悬念/吸引力描述，30字以内，落在具体东西上、讲清会遇上什么，但不剧透步骤'),
         category: z.enum(['explore', 'organize', 'create', 'connect', 'sense']).describe('这条支线属于哪一类，用于手账集印：explore=探索（走出去发现新东西）/ organize=整理（收拾归置、与物品相处）/ create=创造（动手做一个东西）/ connect=连接（和人、和记忆产生联系）/ sense=感官（调动听觉嗅觉味觉触觉）。一次提出的 2-4 个方案尽量分布在不同类别'),
         tags: z.array(z.string()).describe('2-3个标签，如"室内"、"放松"、"5分钟"、"创意"'),
       })).describe('活动卡片列表，2-4个差异化方案。只填卡片字段——不要带步骤：步骤等玩家选中后在 S2 用 design_activity_steps 设计，未选中的活动不需要步骤'),
@@ -253,12 +266,13 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
     description: TOOL_DESCRIPTIONS.design_activity_steps,
     parameters: z.object({
       steps: z.array(z.object({
-        instruction: z.string().describe('步骤指引，告诉用户具体做什么，一句话、动词开头'),
+        instruction: z.string().describe('步骤指引，一句话、动词开头，讲清做什么和做多少（约35字以内），别只说"感受一下/随便看看"'),
         hint: z.string().optional().describe('小提示/鼓励语，至多一句'),
-        submissionType: z.enum(['check', 'text', 'photo']).describe('这一步交什么证物：check=仅用于没画面的内部就位（闭眼/深呼吸/坐定/把手机扣下，几秒完成、不产出成果、不能是最后一步、一个活动最多1个）；走到某处/打开/拿出东西这类有场景有物件的就位也用 photo 拍现场照；text=交文字证物（清单/答案/记录）；photo=交现场照片外加一句只有做了才答得出的图说答案。出成果或到场的步骤必须用 text 或 photo'),
+        submissionType: z.enum(['text', 'photo']).describe('这一步交什么证物：text=交文字证物（清单/答案/记录）；photo=交现场照片外加一句只有做了才答得出的图说答案。闭眼/深呼吸这类几秒钟内部动作不单独成步，写进相邻证据步的指引里作为铺垫。走到某处/打开/拿出东西这类有场景有物件的就位用 photo 拍现场照。每一步都必须交 text 或 photo 证物'),
         completionCriteria: z.string().describe('完成标准，必须可核对：写清点名要交的证物及其数量/形式/画面，如"列出5种声音、每种一个名词"。禁止"感受一下""随便看看"这类无法验收的话'),
-        proofPrompt: z.string().optional().describe('交证物提示，直接展示在卡片上、告诉玩家这一步要交出什么：text 步点名数量+形式（如"列出你听到的5种声音，每种一个词"）；photo 步=拍照+一个具体问题（如"拍整理后的抽屉，并回答：分成了几个区？"）。text/photo 步必填，check 步留空'),
-      })).describe('为选中的支线设计的完整步骤，2-4步；最后一步必须是 text 或 photo 证据步'),
+        proofPrompt: z.string().describe('交证物提示，直接展示在卡片上、告诉玩家这一步要交出什么：text 步点名数量+形式（如"列出你听到的5种声音，每种一个词"）；photo 步=拍照+一个具体问题（如"拍整理后的抽屉，并回答：分成了几个区？"）。每步必填'),
+        suggestedMinutes: z.number().int().min(1).max(10).optional().describe('这一步的建议节奏（整数分钟，1-10）。按动作估：写清单/命名/抄写等就地小事 2-3 分钟，要走动、拍照、动手做的 4-6 分钟。所有步加起来不得超过玩家空闲时长的 80%——系统会再做一次确定性校正，超了自动按比例压缩。这是宽松的建议节奏，不是考试限时，玩家超时也能照常提交。'),
+      })).describe('为选中的支线设计的完整步骤，2-4步；每一步都必须是 text/photo 证据步（最后一步自然也是）；每步给 suggestedMinutes 建议节奏'),
     }),
     execute: async (args) => {
       if (fsm.current !== 'S2') {
@@ -295,7 +309,17 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           hint: `禁止再调 design_activity_steps。验收通过后直接 publish_step(step_index=${nextStepIndex}) 发下一步；证物不达标（照片和这一步要做的事对不上、或图说答案答非所问）就别发卡，用文字具体指出差在哪、让玩家重交。`,
         });
       }
-      const steps = args.steps as NonNullable<import('../memory/types.js').ActivityPlan['steps']>;
+      // 剥离仅用于入参的 suggestedMinutes，再按玩家空闲时长做确定性校正，
+      // 写回每步的 suggestedSeconds
+      const drafts = args.steps.map(s => ({ submissionType: s.submissionType, suggestedMinutes: s.suggestedMinutes }));
+      // completionCriteria 强制等于展示在卡片上的 proofPrompt：验收标准必须恒等于玩家看到的要求，
+      // 杜绝模型把两者写成两套（玩家按卡片完成却被按更高的内部标准驳回）。
+      const planned = args.steps.map(({ suggestedMinutes: _suggestedMinutes, proofPrompt, ...rest }) => ({
+        ...rest,
+        proofPrompt,
+        completionCriteria: proofPrompt,
+      }));
+      const steps = reconcileStepDurations(planned, drafts, memory.collected.freeTime);
       memory.attachStepsToSelected(steps);
       return JSON.stringify({
         success: true,
@@ -313,8 +337,8 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
       step_index: z.number().describe('步骤序号，从0开始（第一个步骤为0，第二个为1，以此类推）'),
       instruction: z.string().describe('这一步要做什么的具体指引'),
       hint: z.string().optional().describe('温馨小提示'),
-      submission_type: z.enum(['check', 'text', 'photo']).describe('这一步交什么证物：check=闭眼/深呼吸/坐定这类没画面的几秒钟内部动作（不产出成果、不能是最后一步）；走到某处/打开/拿出东西这类就位用 photo 拍现场照；text=交文字证物；photo=交现场照片+一句图说答案。出成果或到场的步骤必须用 text 或 photo'),
-      proof_prompt: z.string().optional().describe('交证物提示，展示在卡片上告诉玩家这一步交出什么证据，须与 design_activity_steps 时该步的 proofPrompt 一致：text 点名数量+形式，photo=拍照+一个只有做了才答得出的具体问题。check 步留空'),
+      submission_type: z.enum(['text', 'photo']).describe('这一步交什么证物：text=交文字证物；photo=交现场照片+一句图说答案。每一步都是 text 或 photo'),
+      proof_prompt: z.string().describe('交证物提示，展示在卡片上告诉玩家这一步交出什么证据，须与 design_activity_steps 时该步的 proofPrompt 一致：text 点名数量+形式，photo=拍照+一个只有做了才答得出的具体问题。每步必填'),
     }),
     execute: async (args) => {
       if (fsm.current !== 'S2') {
@@ -348,17 +372,30 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           hint: '玩家刚发了言（选定活动/提交了证物），先用一句话回应：刚选定活动就说一句接任务、出发的话（不描述步骤内容）；刚交证物就先给肯定或点评（如"过。下一步——"），然后再重新调用 publish_step。',
         });
       }
-      // 白名单护栏（仅 text/photo 内容证物轮）：发下一步卡 = 判定当前证物达标、推进流程。
-      // 只有台词明确给了"通过/达标/完成"信号才允许发卡；含糊（在追问补交、让重拍重答、
-      // 或没下结论）一律拦下——堵"嘴上让玩家重交、手上却发了下一步卡"的矛盾，
-      // 也堵答非所问被稀里糊涂放行。check 就位打卡（点了就过）与入场发首张卡不受此限。
-      if (isContentProofTurn && isContentProofTurn() && classifyTurnVoice && classifyTurnVoice() !== 'accepted') {
-        return JSON.stringify({
-          success: false,
-          error: '玩家这轮交了证物，但你还没有明确判定这一步通过，不能发下一步卡片。',
-          currentState: fsm.current,
-          hint: '二选一：证物确实达标，就先用一句话明确给通过（如"过""达标""可以，下一步"），再重新 publish_step 发下一步卡；证物不达标（照片和任务对不上、图说答案答非所问/没回答卡片上的问题、数量不够），就不要发卡，用文字具体指出差在哪、让玩家重拍或重答。注意：要求玩家"补交/重拍/回答这一步的问题"都属于驳回，驳回时绝对不能发卡。',
-        });
+      // 验收门控（仅 text/photo 证物轮）：发下一步卡 = 判定当前证物达标、推进流程。
+      // 权威依据是独立验收员的结构化 verdict：
+      //  - reject → 硬拦截，无论台词说什么都发不出卡；
+      //  - pass   → 放行（温度门 hasSpoken 已在上方检查）；
+      //  - 验收服务不可用 → 降级为台词门：只有台词明确给了"通过/达标/完成"信号才放行，
+      //    含糊（追问补交、让重拍重答、没下结论）一律拦下，绝不默认放行。
+      if (isContentProofTurn && isContentProofTurn()) {
+        const review = evidenceReview;
+        if (review?.available && review.verdict === 'reject') {
+          return JSON.stringify({
+            success: false,
+            error: `验收员已判定这一步证物不通过（${review.reason}），不能发下一步卡片。`,
+            currentState: fsm.current,
+            hint: `不要发卡、也不要换说法强行通过。按验收意见用你自己的话驳回，先肯定做到的部分，再点出差的那一点，明确告诉玩家怎么补：${review.whatNeeded || '对照这一步的完成标准重新提交证物'}。玩家补料合格后才会放行下一步。`,
+          });
+        }
+        if (!review?.available && classifyTurnVoice && classifyTurnVoice() !== 'accepted') {
+          return JSON.stringify({
+            success: false,
+            error: '玩家这轮交了证物，但验收服务暂时不可用，且你还没有明确判定这一步通过，不能发下一步卡片。',
+            currentState: fsm.current,
+            hint: '二选一：证物确实达标，就先用一句话明确给通过（如"过""达标""可以，下一步"），再重新 publish_step 发下一步卡；证物不达标（照片和任务对不上、图说答案答非所问/没回答卡片上的问题、数量不够），就不要发卡，用文字具体指出差在哪、让玩家重拍或重答。注意：要求玩家"补交/重拍/回答这一步的问题"都属于驳回，驳回时绝对不能发卡。',
+          });
+        }
       }
       const nextStepIndex = memory.stepIndex + 1;
       if (args.step_index < 0 || args.step_index >= plannedSteps.length) {
@@ -392,6 +429,8 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           submissionType: args.submission_type,
           submissionPrompt: SUBMISSION_PROMPTS[args.submission_type],
           proofPrompt: args.proof_prompt,
+          // 建议节奏以 design_activity_steps 校正后存下的为准，不采信 publish 入参，防止模型两传不一致
+          suggestedSeconds: plannedSteps[args.step_index]?.suggestedSeconds ?? 0,
         },
         total: plannedSteps.length,
         activityTitle: selected.title,

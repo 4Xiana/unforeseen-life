@@ -69,7 +69,7 @@ export class LLMRunnerProvider {
     const label = params.label || 'main';
 
     const agent = new Agent({
-      name: '小闲',
+      name: '吱呀',
       instructions,
       tools,
       toolUseBehavior: { stopAtToolNames: STOP_AFTER_TOOLS },

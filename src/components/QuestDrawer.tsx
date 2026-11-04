@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import type { FSMState, QuestProgress, PublishedStep, ActivityPlan, ArchivedQuest } from '../types';
 import { submissionTypeShort, StepSubmitArea } from './TaskStep';
 import { ActivityCards } from './ActivityCards';
+import { StepTimer, OnTimeStamp } from './StepTimer';
+import type { StepTimerApi } from '../hooks/useStepTimer';
 
 interface Props {
   fsmState: FSMState;
@@ -15,12 +17,13 @@ interface Props {
   onSelectActivity: (id: string) => void;
   onRefreshActivities: () => void;
   // 当前步骤就地提交（抽屉内直接交证物，不必回聊天任务卡）
-  onCheck: () => void;
   onSubmitText: (text: string) => void;
   onSubmitPhoto: (file: File, description: string) => void;
   // 放弃当前支线/不选了：按钮收进抽屉底部，贴着任务进度
   onAbandon: () => void;
   onClose: () => void;
+  // 当前进行步的软节奏计时器（App 层唯一实例，与聊天卡同源）
+  timer?: StepTimerApi | null;
 }
 
 // ── 时间轴左轨：圆点 + 竖向连接线，所有阶段节点共用一套结构，保证衔接无缝 ──
@@ -105,7 +108,8 @@ function StepRow({
   status,
   isLast,
   disabled,
-  onCheck,
+  stepKey,
+  timer,
   onSubmitText,
   onSubmitPhoto,
 }: {
@@ -114,7 +118,9 @@ function StepRow({
   status: 'done' | 'current' | 'pending';
   isLast: boolean;
   disabled: boolean;
-  onCheck: () => void;
+  // 该步在计时器里的键（questId#index），用于查"踩点"结果
+  stepKey?: string;
+  timer?: StepTimerApi | null;
   onSubmitText: (text: string) => void;
   onSubmitPhoto: (file: File, description: string) => void;
 }) {
@@ -148,12 +154,16 @@ function StepRow({
               </p>
             </div>
           )}
+          {timer?.active && (
+            <div className="mt-2.5 flex justify-end">
+              <StepTimer timer={timer} compact />
+            </div>
+          )}
           <div className="mt-3">
             <StepSubmitArea
               step={step}
               compact
               disabled={disabled}
-              onCheck={onCheck}
               onSubmitText={onSubmitText}
               onSubmitPhoto={onSubmitPhoto}
             />
@@ -161,11 +171,12 @@ function StepRow({
         </div>
       ) : status === 'done' && step ? (
         <div className="pt-0.5">
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <span className="font-hand text-[12px] text-teal leading-none">第 {index + 1} 步 · 已完成</span>
             <span className="font-hand text-[11px] text-fog bg-paper-2 border border-fog-light/70 px-1.5 py-0.5 rounded-full">
               {submissionTypeShort(step.submissionType)}
             </span>
+            {stepKey && timer?.getResult(stepKey)?.onTime && <OnTimeStamp compact />}
           </div>
           <p className="text-ink-2/70 text-[13px] leading-relaxed line-clamp-2">{step.instruction}</p>
         </div>
@@ -200,11 +211,11 @@ export function QuestDrawer({
   isStreaming,
   onSelectActivity,
   onRefreshActivities,
-  onCheck,
   onSubmitText,
   onSubmitPhoto,
   onAbandon,
   onClose,
+  timer,
 }: Props) {
   const finished = fsmState === 'S3';
   const picking = fsmState === 'S1';
@@ -289,7 +300,7 @@ export function QuestDrawer({
             </div>
           </>
         ) : (
-          <LoadingHint text="小闲正在构思几条支线…"/>
+          <LoadingHint text="吱呀正在构思几条支线…"/>
         )}
       </Rail>,
     );
@@ -319,7 +330,8 @@ export function QuestDrawer({
           status={status}
           isLast={isLastStep}
           disabled={isStreaming}
-          onCheck={onCheck}
+          stepKey={quest.id ? `${quest.id}#${i}` : undefined}
+          timer={timer}
           onSubmitText={onSubmitText}
           onSubmitPhoto={onSubmitPhoto}
         />,
@@ -347,7 +359,7 @@ export function QuestDrawer({
         <div className="mb-2">
           <StageLabel tone="moss">第 {journeyNo} 条支线 · 准备出发</StageLabel>
         </div>
-        <LoadingHint text="小闲正在安排这条支线的步骤…"/>
+        <LoadingHint text="吱呀正在安排这条支线的步骤…"/>
       </Rail>,
     );
   }
@@ -408,7 +420,7 @@ export function QuestDrawer({
           {nodes.length > 0 ? nodes : (
             <div className="pt-10 text-center">
               <p className="font-hand text-fog text-[14px] leading-relaxed">
-                还没有任务在进行。<br/>回聊天里让小闲给你挑条支线吧。
+                还没有任务在进行。<br/>回聊天里让吱呀给你挑条支线吧。
               </p>
             </div>
           )}

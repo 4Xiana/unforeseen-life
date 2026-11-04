@@ -6,9 +6,25 @@ export type QuestCategory = 'explore' | 'organize' | 'create' | 'connect' | 'sen
 export interface ActivityStep {
   instruction: string;
   hint?: string;
-  submissionType: 'check' | 'text' | 'photo';
+  submissionType: 'text' | 'photo';
   completionCriteria: string;
   proofPrompt?: string;
+  /**
+   * 这一步的建议节奏（秒），由 design_activity_steps 时按玩家空闲时长校正后写入。
+   * undefined 视作不计时。
+   * 这是给玩家的宽松参考，不是截止时间——超时绝不影响验收。
+   */
+  suggestedSeconds?: number;
+  /**
+   * 玩家为这一步提交的证物（验收通过后写入）。用于记录页持久化展示。
+   * text 步：type='text', text=提交的文字；photo 步：type='photo', text=图说答案, photoUrl=可访问 URL。
+   */
+  submittedEvidence?: {
+    type: 'text' | 'photo';
+    text?: string;
+    photoUrl?: string;
+    at: string;
+  };
 }
 
 export interface ActivityPlan {

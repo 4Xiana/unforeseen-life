@@ -26,6 +26,10 @@ export default defineConfig({
           });
         },
       },
+      '/evidence': {
+        target: 'http://localhost:5182',
+        changeOrigin: true,
+      },
     },
   },
   build: {

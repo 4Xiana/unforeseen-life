@@ -16,8 +16,8 @@ export interface AssembledContext {
   layers: ContextLayers;
 }
 
-export function assembleContext(memory: WorkingMemory, handbookBrief?: string, envBrief?: string | null): AssembledContext {
-  const snapshot = buildRuntimeSnapshot(memory, handbookBrief, envBrief);
+export function assembleContext(memory: WorkingMemory, handbookBrief?: string, envBrief?: string | null, profileBrief?: string): AssembledContext {
+  const snapshot = buildRuntimeSnapshot(memory, handbookBrief, envBrief, profileBrief);
 
   const full = [CORE_INSTRUCTIONS, '', snapshot]
     .filter(Boolean)
@@ -32,7 +32,7 @@ export function assembleContext(memory: WorkingMemory, handbookBrief?: string, e
   };
 }
 
-function buildRuntimeSnapshot(memory: WorkingMemory, handbookBrief?: string, envBrief?: string | null): string {
+function buildRuntimeSnapshot(memory: WorkingMemory, handbookBrief?: string, envBrief?: string | null, profileBrief?: string): string {
   const snap = memory.snapshot();
   const lines: string[] = ['# 运行时上下文'];
 
@@ -54,7 +54,13 @@ function buildRuntimeSnapshot(memory: WorkingMemory, handbookBrief?: string, env
     lines.push(envBrief);
   }
 
-  // 玩家的支线手账（跨会话记忆）：让小闲记得 TA 做过什么、集了多少、离哪个成就最近
+  // 玩家喜好档案（跨会话长期画像）：让吱呀按 TA 稳定的偏好推荐、绕开雷点
+  if (profileBrief) {
+    lines.push('');
+    lines.push(profileBrief);
+  }
+
+  // 玩家的支线手账（跨会话记忆）：让吱呀记得 TA 做过什么、集了多少、离哪个成就最近
   if (handbookBrief) {
     lines.push('');
     lines.push('# 玩家的支线手账（你替 TA 攒着的小册子，跨次记得）');
@@ -88,6 +94,9 @@ function buildRuntimeSnapshot(memory: WorkingMemory, handbookBrief?: string, env
       if (currentStep) {
         lines.push(`当前步骤指引：${currentStep.instruction}`);
         lines.push(`完成条件：${currentStep.completionCriteria}`);
+        if (currentStep.suggestedSeconds && currentStep.suggestedSeconds > 0) {
+          lines.push(`这一步的建议节奏：约 ${Math.round(currentStep.suggestedSeconds / 60)} 分钟（卡片上有软计时器；这是宽松参考不是限时，玩家超时也照常验收，你不报时、不催促）`);
+        }
       }
     } else {
       lines.push('当前选中活动：无');

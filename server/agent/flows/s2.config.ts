@@ -1,8 +1,8 @@
 import type { StateConfig } from './types.js';
 import {
-  S2_SUBMIT_CHECK_MESSAGE,
   buildS2SubmitTextMessage,
   buildS2SubmitPhotoMessage,
+  buildStepPaceNote,
   S2_ABANDON_MESSAGE,
   S2_SWITCH_ACTIVITY_MESSAGE,
 } from '../prompts/index.js';
@@ -41,21 +41,24 @@ export const s2Config: StateConfig = {
       injectedInstruction: [
         `已进入 S2 执行阶段，选中支线「${selected.title}」。${selected.hook}`,
         '行动手册和活动设计规范已在下方一次性展开——禁止再调用 get_skill 重复加载它们，直接严格照做。',
-        `立即按序行动：1) 按设计规范为这一条支线 design_activity_steps 设计 2-4 个步骤（最后一步必须是 text/photo 证据步；这是静默内部动作，台词里不提）；2) ${speechRule}再 publish_step(step_index=0) 发出第一步卡片。必须实际调工具，不能只说话就结束回合。`,
+        `立即按序行动：1) 按设计规范为这一条支线 design_activity_steps 设计 2-4 个步骤（每一步都必须是 text/photo 证据步；这是静默内部动作，台词里不提）；2) ${speechRule}再 publish_step(step_index=0) 发出第一步卡片。必须实际调工具，不能只说话就结束回合。`,
         loaded,
       ].join('\n\n'),
     };
   },
 
-  onUserInput: (input) => {
-    if (input.kind === 'submit_check') {
-      return { injectedMessage: S2_SUBMIT_CHECK_MESSAGE };
-    }
+  onUserInput: (input, helpers) => {
+    // 玩家提交的是"当前步"（publish_step 已把 stepIndex 指到该步）：取它的建议节奏
+    const paceNote = (() => {
+      const steps = helpers.memory.selected?.steps;
+      const suggested = steps?.[helpers.memory.stepIndex]?.suggestedSeconds;
+      return buildStepPaceNote(input.elapsedSeconds, suggested);
+    })();
     if (input.kind === 'submit_text') {
-      return { injectedMessage: buildS2SubmitTextMessage(input.text || '') };
+      return { injectedMessage: buildS2SubmitTextMessage(input.text || '', paceNote) };
     }
     if (input.kind === 'submit_photo') {
-      return { injectedMessage: buildS2SubmitPhotoMessage(input.description || '我上传了照片') };
+      return { injectedMessage: buildS2SubmitPhotoMessage(input.description || '我上传了照片', paceNote) };
     }
     if (input.kind === 'abandon') {
       return { injectedMessage: S2_ABANDON_MESSAGE };

@@ -241,13 +241,19 @@
     transform: rotate(3deg);
   }
 
-  /* 小闲头像：苔藓绿圆底 */
+  /* 吱呀头像：苔藓绿圆底 */
   .avatar-badge {
     @apply w-8 h-8 rounded-full flex items-center justify-center;
     background: var(--moss);
     color: #fff;
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(45,42,38,0.18);
+  }
+
+  /* 首页 slogan：苹果手札体 Hannotate（iOS/macOS 内置）→ 霞鹜文楷兜底（其余平台） */
+  .font-slogan {
+    font-family: "Hannotate SC", "Hannotate TC", "Hannotate", "LXGW WenKai", "Ma Shan Zheng", cursive;
+    font-weight: 500;
   }
 
   /* 小节标题：手写批注 */
@@ -464,7 +470,7 @@
   border-radius: 12px;
 }
 
-/* ── 小闲角色：呼吸 / 眨眼 / 小旗摆动 ─────────────────────── */
+/* ── 吱呀角色：呼吸 / 眨眼 / 小旗摆动 ─────────────────────── */
 @keyframes xianBob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
@@ -490,6 +496,11 @@
 
 .xian-flag {
   animation: xianFlag 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

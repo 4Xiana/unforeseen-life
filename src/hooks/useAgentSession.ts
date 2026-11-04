@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createSession, sendMessage, sendPhoto } from '../api';
-import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo } from '../types';
+import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, fetchQuestPairs } from '../api';
+import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo, UserProfile, SaveProfileInput, QuestPair } from '../types';
 import { getClientId, saveClientId, fetchHandbook } from '../handbook';
 import { useGeolocation, type GeoCoords } from './useGeolocation';
 
@@ -34,6 +34,10 @@ export function useAgentSession() {
   const [completed, setCompleted] = useState(false);
   const [started, setStarted] = useState(false);
   const [handbook, setHandbook] = useState<HandbookView | null>(null);
+  // 玩家喜好档案（长期记忆）：落点页右上角入口据此显示首访红点，每轮上下文自动注入
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Pair-wise 真实任务对：第二页快速对比用
+  const [questPairs, setQuestPairs] = useState<QuestPair[]>([]);
   const [reward, setReward] = useState<QuestReward | null>(null);
   // 当前支线任务进度：步骤卡在瀑布流里会被刷上去，抽屉靠这份聚合数据常驻展示
   const [quest, setQuest] = useState<QuestProgress | null>(null);
@@ -57,6 +61,19 @@ export function useAgentSession() {
     geo.request();
   }, [geo.request]);
 
+  // 落点页加载长期喜好档案（用本地稳定 clientId，无需先开 session）：
+  // 决定右上角入口是否显示"首次"红点
+  useEffect(() => {
+    let alive = true;
+    fetchProfile(clientIdRef.current)
+      .then((p) => { if (alive && p) setProfile(p); })
+      .catch(() => {});
+    fetchQuestPairs()
+      .then((q) => { if (alive && q) setQuestPairs(q); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const abortRef = useRef<AbortController | null>(null);
   const activeRequestRef = useRef(false);
   const streamingTextRef = useRef('');
@@ -70,6 +87,8 @@ export function useAgentSession() {
   const archivedQuestRef = useRef<string>('');
   // 当前支线的唯一 key：新支线 step0 发布时换新；归档记录据此判重
   const questKeyRef = useRef<string>('');
+  // 刚 push 进对话流的照片 item id：收到后端 photo_saved 后把 object URL 换成持久化 URL
+  const pendingPhotoItemIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     timelineRef.current = timeline;
@@ -358,6 +377,18 @@ export function useAgentSession() {
         setError(event.message as string);
         break;
       }
+      case 'photo_saved': {
+        // 后端已把照片存盘，把对话流里的 object URL 换成可持久访问的 /evidence/xxx
+        const itemId = pendingPhotoItemIdRef.current;
+        const photoUrl = event.photoUrl as string | undefined;
+        if (itemId && photoUrl) {
+          setTimeline(prev => prev.map(it =>
+            it.id === itemId ? { ...it, imageUrl: photoUrl } : it
+          ));
+          pendingPhotoItemIdRef.current = null;
+        }
+        break;
+      }
     }
   }, [finalizeStreamingMessage, pushItem]);
 
@@ -366,10 +397,12 @@ export function useAgentSession() {
   }, [handleEvent]);
 
   const doSend = useCallback(async (params: {
-    type: 'text' | 'select_activity' | 'submit_check' | 'submit_text' | 'abandon';
+    type: 'text' | 'select_activity' | 'submit_text' | 'abandon';
     text?: string;
     activityId?: string;
     showUserMessage?: boolean;
+    // 步骤实际耗时（秒），仅 submit_text 由软计时器带上
+    elapsedSeconds?: number;
   }) => {
     if (!sessionId) return;
 
@@ -405,10 +438,6 @@ export function useAgentSession() {
       if (activityTitle) pushUserText(`我选「${activityTitle}」`);
     }
 
-    if (params.type === 'submit_check') {
-      pushUserText('✅ 已完成');
-    }
-
     if (params.type === 'abandon') {
       pushUserText('不想做了...');
     }
@@ -420,6 +449,7 @@ export function useAgentSession() {
         text: params.text,
         activityId: params.activityId,
         geo: geoCoordsRef.current ?? undefined,
+        elapsedSeconds: params.elapsedSeconds,
         onEvent: handleEventRef.current,
         signal: ac.signal,
       });
@@ -444,18 +474,13 @@ export function useAgentSession() {
     doSend({ type: 'select_activity', activityId });
   }, [isStreaming, doSend]);
 
-  const confirmCheck = useCallback(() => {
-    if (isStreaming) return;
-    doSend({ type: 'submit_check' });
-  }, [isStreaming, doSend]);
-
-  const submitText = useCallback((text: string) => {
+  const submitText = useCallback((text: string, elapsedSeconds?: number) => {
     if (isStreaming || !text.trim()) return;
     pushUserText(text);
-    doSend({ type: 'submit_text', text, showUserMessage: false });
+    doSend({ type: 'submit_text', text, showUserMessage: false, elapsedSeconds });
   }, [isStreaming, doSend, pushUserText]);
 
-  const submitPhoto = useCallback(async (file: File, description: string) => {
+  const submitPhoto = useCallback(async (file: File, description: string, elapsedSeconds?: number) => {
     if (isStreaming || !sessionId) return;
 
     if (activeRequestRef.current && abortRef.current) {
@@ -468,11 +493,13 @@ export function useAgentSession() {
     setIsStreaming(true);
     setError(null);
 
-    const photoUrl = URL.createObjectURL(file);
-    pushItem({ id: uid(), kind: 'user', content: `📷 ${description || '上传了一张照片'}`, imageUrl: photoUrl, timestamp: Date.now() });
+    const objectUrl = URL.createObjectURL(file);
+    const photoItemId = uid();
+    pendingPhotoItemIdRef.current = photoItemId;
+    pushItem({ id: photoItemId, kind: 'user', content: `📷 ${description || '上传了一张照片'}`, imageUrl: objectUrl, timestamp: Date.now() });
 
     try {
-      await sendPhoto(sessionId, file, description, handleEventRef.current, ac.signal, geoCoordsRef.current ?? undefined);
+      await sendPhoto(sessionId, file, description, handleEventRef.current, ac.signal, geoCoordsRef.current ?? undefined, elapsedSeconds);
     } catch (err) {
       if (ac.signal.aborted) return;
       const msg = err instanceof Error ? err.message : String(err);
@@ -499,6 +526,12 @@ export function useAgentSession() {
     if (v) setHandbook(v);
   }, []);
 
+  // 保存喜好档案到长期记忆：PreferenceSheet 提交时调用，保存成功立即更新本地状态
+  const saveUserProfile = useCallback(async (input: SaveProfileInput) => {
+    const saved = await updateProfile(clientIdRef.current, input);
+    if (saved) setProfile(saved);
+  }, []);
+
   // 骨架屏：玩家点选/换一批的乐观态立即显示；否则按"UI 已挂起 + Agent 已开口引导"放行
   const uiSkeleton = uiOptimistic ?? (uiPending && uiGuided ? uiPending : null);
 
@@ -515,6 +548,8 @@ export function useAgentSession() {
     error,
     completed,
     handbook,
+    profile,
+    questPairs,
     reward,
     quest,
     questHistory,
@@ -527,11 +562,11 @@ export function useAgentSession() {
     start,
     sendText,
     selectActivity,
-    confirmCheck,
     submitText,
     submitPhoto,
     abandon,
     dismissCompletion,
     refreshHandbook,
+    saveUserProfile,
   };
 }

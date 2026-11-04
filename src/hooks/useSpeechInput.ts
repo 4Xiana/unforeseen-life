@@ -63,6 +63,10 @@ export interface SpeechInputApi {
   error: string | null;
   /** 开始 / 停止切换；停止时已识别文本保留在输入框，不自动发送 */
   toggle: () => void;
+  /** 按住说话：按下时开始（continuous，不静音自动断），松手前调 end() 收尾 */
+  begin: () => void;
+  /** 按住说话收尾：停止识别，onend 时把最终文本通过 onAutoCommit 回传（空文本不回传） */
+  end: () => void;
   /** 作废收场：内容已被提交取走时调用，中止识别并丢弃后续异步写回 */
   reset: () => void;
 }
@@ -70,13 +74,14 @@ export interface SpeechInputApi {
 /**
  * 语音输入：把浏览器原生 SpeechRecognition 接到一个受控文本输入上。
  * - 识别中的 interim 文本实时回填，final 文本在结束时固化；
- * - 只追加、不自动发送，留给用户检查/编辑后手动提交（精细控制）；
- * - 单次识别模式（continuous=false），说完自动结束，也可再点一下手动停止；
+ * - toggle 模式：单次识别（continuous=false），说完自动结束，不自动发送，留给用户检查/编辑；
+ * - begin/end 按住模式：continuous=true，松手结束时通过 onAutoCommit 回传最终文本（首页快启用）；
  * - 提交内容时必须调 reset()，避免 onend 异步把文本写回已清空的输入框。
  */
 export function useSpeechInput(
   value: string,
   onChange: (next: string) => void,
+  onAutoCommit?: (text: string) => void,
 ): SpeechInputApi {
   const ctorRef = useRef<SpeechRecognitionCtor | null>(null);
   if (ctorRef.current === null && typeof window !== 'undefined') {
@@ -90,10 +95,14 @@ export function useSpeechInput(
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const listeningRef = useRef(false);
   const silentRef = useRef(false);
+  // 本轮是否为"按住说话"：只在该模式下松手 onend 才触发 onAutoCommit
+  const holdModeRef = useRef(false);
   const baseRef = useRef('');
   const finalRef = useRef('');
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onAutoCommitRef = useRef(onAutoCommit);
+  onAutoCommitRef.current = onAutoCommit;
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -137,15 +146,16 @@ export function useSpeechInput(
     return () => window.clearTimeout(t);
   }, [error]);
 
-  const start = useCallback(() => {
+  const start = useCallback((opts?: { continuous?: boolean; hold?: boolean }) => {
     const Ctor = ctorRef.current;
     if (!Ctor || listeningRef.current) return;
     setError(null);
     silentRef.current = false;
+    holdModeRef.current = !!opts?.hold;
 
     const rec = new Ctor();
     rec.lang = 'zh-CN';
-    rec.continuous = false;
+    rec.continuous = !!opts?.continuous;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -179,10 +189,16 @@ export function useSpeechInput(
     };
 
     rec.onend = () => {
-      // 单次模式：手动停止 / 说完自动结束 / 报错收尾都走这里
+      // 手动停止 / 说完自动结束 / 报错收尾都走这里
+      const committed = baseRef.current + finalRef.current;
       if (!silentRef.current) {
-        onChangeRef.current(baseRef.current + finalRef.current);
+        onChangeRef.current(committed);
+        // 按住说话松手：把最终文本回传给调用方（空串不回传，交由 error 提示兜底）
+        if (holdModeRef.current && committed.trim()) {
+          onAutoCommitRef.current?.(committed.trim());
+        }
       }
+      holdModeRef.current = false;
       teardown(rec);
     };
 
@@ -217,6 +233,11 @@ export function useSpeechInput(
     else start();
   }, [supported, start, stop]);
 
+  // 按住说话：按下开始（continuous，停顿不自动断），松手调 end
+  const begin = useCallback(() => {
+    start({ continuous: true, hold: true });
+  }, [start]);
+
   const reset = useCallback(() => {
     const rec = recRef.current;
     if (rec) {
@@ -228,9 +249,10 @@ export function useSpeechInput(
       }
       teardown(rec);
     }
+    holdModeRef.current = false;
     baseRef.current = '';
     finalRef.current = '';
   }, [teardown]);
 
-  return { supported, listening, error, toggle, reset };
+  return { supported, listening, error, toggle, begin, end: stop, reset };
 }

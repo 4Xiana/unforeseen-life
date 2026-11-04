@@ -6,14 +6,16 @@ import { ActivityCards } from './components/ActivityCards';
 import { TaskStep } from './components/TaskStep';
 import { CompletionScreen } from './components/CompletionScreen';
 import { HandbookView } from './components/HandbookView';
+import { RecordsView } from './components/RecordsView';
 import { QuestDrawer } from './components/QuestDrawer';
 import { LandingScreen } from './components/LandingScreen';
+import { ImmersiveCall } from './components/ImmersiveCall';
 import { DockSkeleton } from './components/DockSkeleton';
-import { XianMascot } from './components/XianMascot';
 import { VoiceButton } from './components/VoiceButton';
 import { useSpeechInput } from './hooks/useSpeechInput';
+import { useStepTimer } from './hooks/useStepTimer';
 
-// 小闲发出的内容块（文字 / 活动卡 / 步骤卡 / 骨架屏）：连续多块只显示一次头像
+// 吱呀发出的内容块（文字 / 活动卡 / 步骤卡 / 骨架屏）：连续多块只显示一次头像
 function isXianKind(kind: string | undefined): boolean {
   return kind === 'npc' || kind === 'activities' || kind === 'step';
 }
@@ -24,9 +26,13 @@ function NpcEnvelope({ children, showHeader = true }: { children: ReactNode; sho
     <div className="flex justify-start animate-slide-in-left">
       <div className="w-full flex gap-2.5">
         {showHeader ? (
-          <div className="avatar-badge mt-0.5 shrink-0 self-start">
-            <XianMascot variant="face" mono size={15} />
-          </div>
+          <img
+            src="/agent_avatar.png"
+            alt="吱呀"
+            width={32}
+            height={32}
+            className="w-8 h-8 rounded-full mt-0.5 shrink-0 self-start object-cover"
+          />
         ) : (
           <div className="w-8 shrink-0 self-start" aria-hidden />
         )}
@@ -34,7 +40,7 @@ function NpcEnvelope({ children, showHeader = true }: { children: ReactNode; sho
           {showHeader && (
             <div className="flex items-center gap-2 mb-1.5">
               <span className="font-hand text-[15px] leading-none text-fog">
-                小闲
+                吱呀
               </span>
             </div>
           )}
@@ -43,6 +49,28 @@ function NpcEnvelope({ children, showHeader = true }: { children: ReactNode; sho
       </div>
     </div>
   );
+}
+
+/**
+ * 可见视口高度（px）：手机软键盘弹起时 window.innerHeight / 100vh 不会缩短，
+ * 但 visualViewport.height 会变矮。根容器按它定高，底部操作条就能抬到键盘上方。
+ * 不支持 visualViewport 时返回 null，由 CSS 的 100dvh 兜底。
+ */
+function useViewportHeight(): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setHeight(Math.round(vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+  return height;
 }
 
 export default function App() {
@@ -68,17 +96,23 @@ export default function App() {
     start,
     sendText,
     selectActivity,
-    confirmCheck,
     submitText,
     submitPhoto,
     abandon,
     dismissCompletion,
     refreshHandbook,
+    profile,
+    questPairs,
+    saveUserProfile,
   } = useAgentSession();
+  const viewportHeight = useViewportHeight();
 
   const [inputValue, setInputValue] = useState('');
   const [showHandbook, setShowHandbook] = useState(false);
+  const [showRecords, setShowRecords] = useState(false);
   const [showQuest, setShowQuest] = useState(false);
+  // 沉浸通话模式：语音对话 + 字幕 + 独立卡片弹层
+  const [immersive, setImmersive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatVoice = useSpeechInput(inputValue, setInputValue);
 
@@ -91,6 +125,35 @@ export default function App() {
   });
 
   const s2Evaluating = fsmState === 'S2' && isStreaming;
+
+  // ── 当前步的软节奏计时器（聊天卡与抽屉共用这一个实例）──
+  // 当前步 = S2 已发布的最后一步；check 就位步 suggestedSeconds=0 → 不开表（stepKey=null）
+  const activeStep = fsmState === 'S2' && quest ? quest.steps[quest.steps.length - 1] : undefined;
+  const activeTimed = !!(activeStep?.suggestedSeconds && activeStep.suggestedSeconds > 0);
+  const timerStepKey = quest?.id && activeStep && activeTimed
+    ? `${quest.id}#${activeStep.index}`
+    : null;
+  const stepTimer = useStepTimer(timerStepKey, activeTimed ? activeStep!.suggestedSeconds! : 0);
+
+  // 提交后若被吱呀驳回（一轮结束仍停在 S2 同一步）：解冻计时器接着走；
+  // 通过则会有新的 step_published 切键重置，resume 对新键是空操作
+  const prevStreamingRef = useRef(false);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming && fsmState === 'S2') {
+      stepTimer.resume();
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, fsmState, stepTimer]);
+
+  // 提交证物前先定格计时、取实际耗时上行（不计时的步骤 outcome=null）
+  const handleSubmitText = (text: string) => {
+    const outcome = stepTimer.active ? stepTimer.markSubmitted() : null;
+    submitText(text, outcome?.elapsedSeconds);
+  };
+  const handleSubmitPhoto = (file: File, description: string) => {
+    const outcome = stepTimer.active ? stepTimer.markSubmitted() : null;
+    void submitPhoto(file, description, outcome?.elapsedSeconds);
+  };
 
   // 任务板抽屉：选支线（S1）→ 步骤进度（S2）→ 完成（S3）全程常驻。
   // tag 一旦出现就不再卸载，只换文案/颜色；数据未到的间隙用过程态文案兜底，衔接不留空位
@@ -145,11 +208,14 @@ export default function App() {
     : null;
   const geoLabel = geoPlace ? `${geoPlace}${geoWeather ? ` · ${geoWeather}` : ''}` : '定位已开';
   const geoTitle = geoWeather
-    ? `已开启定位：${geoPlace || '已获取位置'}，${geoWeather}。小闲会参考天气和位置推荐支线`
-    : '已开启定位，小闲会参考你在哪儿、什么天气来推荐支线';
+    ? `已开启定位：${geoPlace || '已获取位置'}，${geoWeather}。吱呀会参考天气和位置推荐支线`
+    : '已开启定位，吱呀会参考你在哪儿、什么天气来推荐支线';
 
   return (
-    <div className="h-screen flex flex-col relative overflow-hidden notebook-page">
+    <div
+      className="h-[100dvh] flex flex-col relative overflow-hidden notebook-page"
+      style={viewportHeight ? { height: viewportHeight } : undefined}
+    >
       {completed && (
         <CompletionScreen
           reward={reward}
@@ -161,6 +227,9 @@ export default function App() {
       {showHandbook && handbook && (
         <HandbookView view={handbook} onClose={() => setShowHandbook(false)} />
       )}
+      {showRecords && handbook && (
+        <RecordsView view={handbook} onClose={() => setShowRecords(false)} />
+      )}
       {showQuest && (
         <QuestDrawer
           fsmState={fsmState}
@@ -170,18 +239,38 @@ export default function App() {
           isStreaming={isStreaming}
           onSelectActivity={selectActivity}
           onRefreshActivities={() => sendText('换一批')}
-          onCheck={confirmCheck}
-          onSubmitText={submitText}
-          onSubmitPhoto={submitPhoto}
+          onSubmitText={handleSubmitText}
+          onSubmitPhoto={handleSubmitPhoto}
           onAbandon={abandon}
           onClose={() => setShowQuest(false)}
+          timer={stepTimer}
         />
       )}
 
       {!started ? (
-        <LandingScreen onStart={start} />
+        <LandingScreen onStart={start} onOpenHandbook={() => { refreshHandbook(); setShowHandbook(true); }} profile={profile} pairs={questPairs} onSaveProfile={saveUserProfile} />
       ) : (
       <div className="flex-1 flex flex-col min-h-0 animate-fade-in">
+      {immersive ? (
+        <ImmersiveCall
+          fsmState={fsmState}
+          timeline={timeline}
+          isStreaming={isStreaming}
+          quest={quest}
+          questHistory={questHistory}
+          proposedActivities={proposedActivities}
+          stepTimer={stepTimer}
+          onExit={() => setImmersive(false)}
+          onOpenHandbook={() => { refreshHandbook(); setShowHandbook(true); }}
+          onSendText={sendText}
+          onSelectActivity={selectActivity}
+          onRefreshActivities={() => sendText('换一批')}
+          onSubmitText={handleSubmitText}
+          onSubmitPhoto={handleSubmitPhoto}
+          onAbandon={abandon}
+        />
+      ) : (
+      <>
       <header className="shrink-0 z-10 relative">
         <div className="px-5 pt-5 pb-3 relative">
           <div className="flex items-center justify-between">
@@ -247,6 +336,29 @@ export default function App() {
                 </svg>
                 手账{handbook && handbook.stats.total > 0 ? ` ${handbook.stats.total}` : ''}
               </button>
+              <button
+                onClick={() => setShowRecords(true)}
+                className="stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1"
+                title="支线记录：每一步的证物"
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="text-teal">
+                  <path d="M3 2.5H11V11.5H3V2.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                  <path d="M5 5H9M5 7.5H9M5 10H7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+                </svg>
+                记录
+              </button>
+              <button
+                onClick={() => setImmersive(true)}
+                className="stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1"
+                title="沉浸通话模式：语音对话 + 字幕"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-moss">
+                  <path d="M4 7V9C4 11.2 5.8 13 8 13C10.2 13 12 11.2 12 9V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <rect x="2.5" y="3" width="3" height="4.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                  <rect x="10.5" y="3" width="3" height="4.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                </svg>
+                沉浸
+              </button>
             </div>
           </div>
         </div>
@@ -273,7 +385,7 @@ export default function App() {
               <div className="absolute inset-0 border-2 border-fog-light rounded-full"/>
               <div className="absolute inset-0 border-2 border-transparent border-t-moss rounded-full animate-spin"/>
             </div>
-            <p className="font-hand text-fog text-[16px]">小闲正在赶来…</p>
+            <p className="font-hand text-fog text-[16px]">吱呀正在赶来…</p>
           </div>
         </div>
       ) : (
@@ -282,7 +394,7 @@ export default function App() {
             <div className="max-w-lg mx-auto space-y-4">
               {timeline.map((item, idx) => {
                 const prev = timeline[idx - 1];
-                // 连续同属小闲的块只显示一次头像+署名
+                // 连续同属吱呀的块只显示一次头像+署名
                 const showHeader = !prev || !isXianKind(prev.kind);
                 if (item.kind === 'activities') {
                   const isActive = idx === lastActivitiesIdx && fsmState === 'S1';
@@ -330,11 +442,11 @@ export default function App() {
                         <TaskStep
                           step={item.step}
                           total={item.total}
-                          onCheck={confirmCheck}
-                          onSubmitText={submitText}
-                          onSubmitPhoto={submitPhoto}
+                          onSubmitText={handleSubmitText}
+                          onSubmitPhoto={handleSubmitPhoto}
                           disabled={isStreaming}
                           done={!isActive}
+                          timer={isActive ? stepTimer : null}
                         />
                       </div>
                     </NpcEnvelope>
@@ -390,10 +502,10 @@ export default function App() {
                 {fsmState === 'S0' && !isStreaming && timeline.some(it => it.kind === 'npc') && (
                   <div className="flex justify-center pb-2">
                     <button
-                      onClick={() => { setInputValue(''); sendText('没有啦，请开始构思吧'); }}
+                      onClick={() => { setInputValue(''); sendText('我也没想好，你按15分钟给我推荐吧'); }}
                       className="flex items-center gap-1.5 text-[13.5px] font-hand text-moss-deep bg-moss/[12%] border border-moss/40 hover:bg-moss/20 px-4 py-2 rounded-full transition-colors shadow-paper-sm"
                     >
-                      没有啦，请开始构思吧
+                      没想好？按 15 分钟直接来
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <path d="M2.5 7H11M8 4L11 7L8 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -408,9 +520,9 @@ export default function App() {
                     onKeyDown={handleKeyDown}
                     placeholder={
                       chatVoice.listening ? '正在聆听，说完点一下麦克风…' :
-                      fsmState === 'S0' ? '聊聊你现在的时间和心情...' :
+                      fsmState === 'S0' ? '说说你有多少空闲，可以留给自己…' :
                       fsmState === 'S1' ? '选一个，或者说说你的想法...' :
-                      '写下你的反馈...'
+                      '想跟吱呀说点什么…'
                     }
                     disabled={isInputDisabled}
                     className="flex-1 bg-transparent text-ink text-[14px] px-3 py-2.5 focus:outline-none placeholder:text-fog/70 min-w-0"
@@ -442,20 +554,11 @@ export default function App() {
           </div>
         </>
       )}
+      </>
+      )}
       </div>
       )}
 
-      {!started && (
-        <button
-          onClick={() => { refreshHandbook(); setShowHandbook(true); }}
-          className="absolute top-5 right-5 z-20 stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1.5"
-        >
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="text-orange">
-            <path d="M7 1L8.5 4.5L12 5L9.5 7.5L10 11L7 9.5L4 11L4.5 7.5L2 5L5.5 4.5L7 1Z" fill="currentColor" strokeLinejoin="round"/>
-          </svg>
-          支线手账
-        </button>
-      )}
     </div>
   );
 }

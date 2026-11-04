@@ -4,14 +4,18 @@ import type { EmitEvent } from '../llm/runner-provider.js';
 import type { AtomTool } from '../tools/atom-tools.js';
 
 export interface StructuredInput {
-  kind: 'text' | 'select_activity' | 'submit_check' | 'submit_text' | 'submit_photo' | 'abandon';
+  kind: 'text' | 'select_activity' | 'submit_text' | 'submit_photo' | 'abandon';
   text?: string;
   activityId?: string;
   description?: string;
   /** 玩家提交的现场照片（data URL），仅 submit_photo 轮携带；只附加在当轮用户消息上，不进文字历史 */
   imageDataUrl?: string;
+  /** 现场照片的可访问 URL（/evidence/xxx.jpg），用于持久化到记录页；仅 submit_photo 轮携带 */
+  photoUrl?: string;
   /** 玩家本轮定位坐标（浏览器 Geolocation），用于解析城市/天气并默认注入上下文；未授权定位时缺省 */
   geo?: { lat: number; lon: number; accuracy?: number };
+  /** 玩家完成这一步实际用掉的秒数（前端软计时器统计，仅 submit_* 携带；不计时步缺省） */
+  elapsedSeconds?: number;
 }
 
 export interface UserInputPreprocessResult {

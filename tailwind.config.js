@@ -38,7 +38,7 @@ export default {
         sans: ['"Noto Sans SC"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"ZCOOL KuaiLe"', '"Baloo 2"', '"Noto Sans SC"', 'sans-serif'],
         hand: ['"Ma Shan Zheng"', '"Caveat"', 'cursive'],
-        mono: ['"JetBrains Mono"', '"SF Mono"', 'Menlo', 'monospace'],
+        mono: ['"JetBrains Mono"', '"SF Mono"', 'Menlo', 'mono'],
       },
       boxShadow: {
         'paper': '0 2px 8px rgba(45,42,38,0.05), 0 6px 18px rgba(45,42,38,0.07)',

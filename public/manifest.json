@@ -1,7 +1,7 @@
 {
   "name": "支线任务 · unforeseen life",
   "short_name": "支线任务",
-  "description": "把刷掉的碎片时间，变成一个个能完成的支线任务",
+  "description": "把悄悄溜走的时间，变成一个个能完成的支线任务",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FDFBF7",
@@ -9,9 +9,9 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/agent_avatar.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

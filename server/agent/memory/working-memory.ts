@@ -92,6 +92,19 @@ export class WorkingMemory {
     this.currentStepIndex = index;
   }
 
+  /**
+   * 验收通过后，把玩家为当前步骤提交的证物写入选中支线的对应步骤，
+   * 供 S3 归档时收集进手账记录页。直接修改内部对象（不触发 clone 循环）。
+   */
+  recordStepEvidence(evidence: { type: 'text' | 'photo'; text?: string; photoUrl?: string }) {
+    const target = this.selectedActivity;
+    if (!target || !target.steps) return false;
+    const step = target.steps[this.currentStepIndex];
+    if (!step) return false;
+    step.submittedEvidence = { ...evidence, at: new Date().toISOString() };
+    return true;
+  }
+
   get time(): string {
     this.currentTime = new Date().toISOString();
     return this.currentTime;

@@ -16,7 +16,11 @@ import {
   type BadgeState,
 } from '../handbook/handbook.js';
 import { resolveEnv, renderEnvBrief, type EnvContext } from '../env/env-service.js';
+import { getProfile, buildProfileBrief } from '../profile/profile.js';
+import { reviewEvidence } from '../review/evidence-reviewer.js';
+import type { EvidenceReview } from '../review/evidence-reviewer.js';
 import type { SessionTracer } from '../tracer/tracer.js';
+import { SUBMISSION_PROMPTS } from '../prompts/tool-meta.js';
 
 const RUN_MAX_TURNS = 10;
 
@@ -42,8 +46,8 @@ const BANNED_VOICE_SENTENCE = /好嘞|好咧|得嘞|得咧/;
 const S2_INSTRUCTION_SENTENCE =
   /第一步|先[把去坐站关开拿找拍听看数堆拢迈走抓]|闭上眼睛?|闭眼|：|、|\d\s*(秒|分钟|分|张|种|个|步|声|条|圈|样|次)|数给我|交给我|发给我|拍下来|走[到进去]|坐下来|站起来|转[身一]|把[^，。！？]{0,14}[找拢收拿拍数关开听看堆放摆]|颜色|声音|照片|招牌|抽屉/;
 const FALLBACK_OPENER: Record<string, string[]> = {
-  S1: ['任务板上新挂了几条，挑一条顺眼的？'],
-  S2: ['这条归你了——走。', '好，这条走起。', '挑得好，出发。'],
+  S1: ['替你留了几条支线，看看哪一条合心意？'],
+  S2: ['这条归你了，我们出发吧。', '好，就这条，慢慢开始。', '眼光真好——出发吧。'],
 };
 
 /**
@@ -126,12 +130,20 @@ export class Coordinator {
     const act = this.memory.selected;
     if (!act) return null;
     const category: QuestCategory = act.category ?? 'sense';
+    const steps = act.steps || [];
     const { view, newBadges } = await recordQuest(this.clientId, {
       title: act.title,
       category,
       tags: act.tags ?? [],
-      steps: (act.steps || []).length,
+      steps: steps.length,
       evidence: this.extractEvidence(),
+      // 收集每一步的指引与玩家提交的原始证物，供记录页完整回放
+      stepDetails: steps.map((s) => ({
+        instruction: s.instruction,
+        submissionType: s.submissionType,
+        proofPrompt: s.proofPrompt,
+        evidence: s.submittedEvidence,
+      })),
     });
     return { view, newBadges, title: act.title, category };
   }
@@ -178,6 +190,9 @@ export class Coordinator {
     emit({ type: 'turn_start', fsmState: this.memory.state });
 
     const configBefore = getStateConfig(this.memory.state);
+
+    // 独立证物验收的结果：在 try 内赋值，try 外（驳回重发逻辑）也需要读取
+    let evidenceReview: EvidenceReview | undefined;
 
     try {
       // ── 预处理：把 UI 交互包装成自然语言（不做信息提取/memory写入/决策）─────
@@ -353,6 +368,47 @@ export class Coordinator {
         }
       }
 
+      // ── 独立证物验收：证物轮在主对话前先由验收员核对，得到权威 verdict ──────────
+      // 核对期间向前端发 stepping 反馈；verdict 会同时用于注入吱呀上下文与工具硬门控。
+      if (input.kind === 'submit_text' || input.kind === 'submit_photo') {
+        const currentStep = this.memory.selected?.steps?.[this.memory.stepIndex];
+        if (currentStep) {
+          trackedEmit({ type: 'stepping', text: '正在核对证物…' });
+          const tRev = Date.now();
+          evidenceReview = await reviewEvidence({
+            step: currentStep,
+            kind: input.kind,
+            text: input.kind === 'submit_text' ? input.text : input.description,
+            imageDataUrl: input.kind === 'submit_photo' ? input.imageDataUrl : undefined,
+            geo: input.geo,
+            claimedPlace: this.memory.collected.scene,
+          });
+          trackedEmit({ type: 'stepping_end' });
+          this.tracer?.log('info', {
+            phase: 'evidence_review',
+            stepIndex: this.memory.stepIndex,
+            available: evidenceReview.available,
+            verdict: evidenceReview.verdict,
+            reason: evidenceReview.reason,
+            whatNeeded: evidenceReview.whatNeeded,
+            durationMs: Date.now() - tRev,
+          });
+        }
+      }
+      // 验收通过：把玩家提交的原始证物写入选中支线的当前步骤，供 S3 归档进记录页
+      if (evidenceReview?.available && evidenceReview.verdict === 'pass') {
+        if (input.kind === 'submit_text') {
+          this.memory.recordStepEvidence({ type: 'text', text: input.text });
+        } else if (input.kind === 'submit_photo') {
+          this.memory.recordStepEvidence({
+            type: 'photo',
+            text: input.description,
+            photoUrl: input.photoUrl,
+          });
+        }
+      }
+      const reviewDirective = this.renderReviewDirective(evidenceReview);
+
       const tools = createAtomTools({
         memory: this.memory,
         fsm: this.fsm,
@@ -360,6 +416,7 @@ export class Coordinator {
         onStateChange,
         hasSpoken: () => assistantText.trim().length > 0,
         classifyTurnVoice: () => this.classifyS2TurnText(assistantText),
+        evidenceReview,
         isContentProofTurn: () => input.kind === 'submit_text' || input.kind === 'submit_photo',
         isGraduationReady: () => this.isGraduationVoice(assistantText),
         getCurrentEnv: () => envContext,
@@ -394,7 +451,7 @@ export class Coordinator {
       if (this.memory.state === 'S0' && hadFreeTimeAtTurnStart) {
         inputItems.push({
           role: 'user',
-          content: '（系统提示：空闲时长你上一轮已保存、偏好邀请也问过了，玩家这条消息就是在回应。无论 TA 是补充了风格/想动想静/室内外/预算等偏好，还是说"没有啦/开始吧"——这一轮都必须推进到出卡：若 TA 说了具体偏好，先 save_user_info 保存；然后 request_state_change(target_state="S1")，切换成功后系统已把 S1 行动手册、素材库和设计规范一并展开（不用再 get_skill），同一轮里直接构思并 propose_activities 发活动卡片（卡片只填标题/悬念/类别/标签，不用写步骤）。不要再反问任何问题、不要停在 S0；工具（save_user_info、request_state_change）该调就调，一步都不能省，只是台词里绝不说"记下了/我记一下"这类话——保存信息是默默完成的内部动作，玩家不需要知道。注意：玩家发了言，发卡前必须先用一句话接住 TA 说的内容（接住偏好或"这就去张罗"），同一句自然引向支线卡片——不能一句话不说就默默发卡。这句话要落到「支线任务」的意象上：把候选说成"几条支线/任务板上新了几条"，自然带一句"支线任务来了、挑一条出发"（如"支线任务来了——都是家里就能动身的，挑一条顺眼的出发"）；禁止"开张""上架""安排活儿"这类和支线不搭的词，也不要"找了几件小事"这种平淡说法。）',
+          content: '（系统提示：空闲时长你上一轮已保存、偏好邀请也问过了，玩家这条消息就是在回应。无论 TA 是补充了风格/想动想静/室内外/预算等偏好，还是说"没有啦/开始吧"——这一轮都必须推进到出卡：若 TA 说了具体偏好，先 save_user_info 保存；然后 request_state_change(target_state="S1")，切换成功后系统已把 S1 行动手册、素材库和设计规范一并展开（不用再 get_skill），同一轮里直接构思并 propose_activities 发活动卡片（卡片只填标题/悬念/类别/标签，不用写步骤）。不要再反问任何问题、不要停在 S0；工具（save_user_info、request_state_change）该调就调，一步都不能省，只是台词里绝不说"记下了/我记一下"这类话——保存信息是默默完成的内部动作，玩家不需要知道。注意：玩家发了言，发卡前必须先用一句话接住 TA 说的内容（接住偏好或"这就出发"），同一句自然引向支线卡片——不能一句话不说就默默发卡。这句话要落到「支线任务」的意象上：把候选说成"几条支线/替你留了几条支线"，自然引一句去挑选（如"替你留了几条支线——都是家里就能动身的，看看哪一条合此刻的心情"）；禁止"开张""上架""安排活儿"这类和支线不搭的词，也不要"找了几件小事"这种平淡说法。）',
         });
       }
 
@@ -404,12 +461,12 @@ export class Coordinator {
         inputItems.push({
           role: 'user',
           content: [
-            { type: 'input_text', text: userMessage || '我拍了张照片，你看看。' },
+            { type: 'input_text', text: (userMessage || '我拍了张照片，你看看。') + reviewDirective },
             { type: 'input_image', image: input.imageDataUrl },
           ],
         });
       } else {
-        inputItems.push({ role: 'user', content: userMessage || '（空消息）' });
+        inputItems.push({ role: 'user', content: (userMessage || '（空消息）') + reviewDirective });
       }
 
       // ── 放弃 = 确定性流转：玩家点了"放弃"，立刻退回"挑选支线"(S1)，不靠模型自觉调工具 ──
@@ -439,7 +496,8 @@ export class Coordinator {
         totalInvokes++;
         // 每次尝试前按最新状态重组装 context（snapshot 随状态变化；行动手册走 get_skill 工具通道）
         const handbookBrief = buildHandbookBrief(await getView(this.clientId));
-        const ctx = assembleContext(this.memory, handbookBrief, renderEnvBrief(envContext));
+        const profileBrief = buildProfileBrief(await getProfile(this.clientId));
+        const ctx = assembleContext(this.memory, handbookBrief, renderEnvBrief(envContext), profileBrief);
 
         // 流式台词净化：跨 chunk 丢弃括号旁白/图片链接/元文本
         const voiceFilter = createVoiceStreamFilter();
@@ -468,7 +526,7 @@ export class Coordinator {
               // 开场窗口（S1 出卡前 / S2 出第一步前）：按句过闸，拦截红线词与步骤指令泄漏。
               // S2 仅在"本轮刚切入 S2、第一步卡未发"时算开场；玩家交证物的验收轮
               //（enteredS2ThisTurn=false，只是这轮新卡未发）不是开场——验收/驳回台词要原样放行，
-              // 绝不能套用开场过闸或兜底接任务句（否则交照片会被回一句文不对题的"好，这条走起"）。
+              // 绝不能套用开场过闸或兜底接任务句（否则交照片会被回一句文不对题的"好，就这条，慢慢开始"）。
               const phase = (this.fsm.current === 'S2' && enteredS2ThisTurn && !sawStepPublished) ? 'S2'
                 : (this.fsm.current === 'S1' && !sawActivitiesProposed) ? 'S1' : '';
               if (!phase) {
@@ -514,7 +572,7 @@ export class Coordinator {
           userMentionedDuration,
           isSelectIntent: input.kind === 'select_activity',
           isRefreshIntent,
-          isSubmissionIntent: input.kind === 'submit_check' || input.kind === 'submit_text' || input.kind === 'submit_photo',
+          isSubmissionIntent: input.kind === 'submit_text' || input.kind === 'submit_photo',
           activityId: input.kind === 'select_activity' ? input.activityId : undefined,
           assistantText,
           attempt,
@@ -584,6 +642,37 @@ export class Coordinator {
     }
 
     this.tracer?.log('info', { phase: 'turn_complete', durationMs: Date.now() - tStart, finalState: this.memory.state });
+
+    // ── 驳回重发：证物轮被验收员判 reject（或验收服务不可用降级）时，当前步不会推进，
+    //    吱呀只输出了驳回话术。为了让玩家不用往上翻找旧卡片，这里重新 emit 一次当前
+    //    步骤卡片，紧跟在驳回话术下方，提交入口直接可见。verdict=pass 时由 publish_step
+    //    正常推进，不需要重发。 ──────────────────────────────────────────────
+    const isProofTurn = input.kind === 'submit_text' || input.kind === 'submit_photo';
+    const rejected = evidenceReview && !evidenceReview.available
+      ? true // 验收服务不可用：降级为台词门，仍有可能被拦下，重发卡片让玩家能继续交
+      : evidenceReview?.verdict === 'reject';
+    if (isProofTurn && rejected && this.memory.state === 'S2') {
+      const selected = this.memory.selected;
+      const currentStep = selected?.steps?.[this.memory.stepIndex];
+      if (selected && currentStep && selected.steps) {
+        emit({
+          type: 'step_published',
+          step: {
+            index: this.memory.stepIndex,
+            instruction: currentStep.instruction,
+            hint: currentStep.hint,
+            submissionType: currentStep.submissionType,
+            submissionPrompt: SUBMISSION_PROMPTS[currentStep.submissionType],
+            proofPrompt: currentStep.proofPrompt,
+            suggestedSeconds: currentStep.suggestedSeconds ?? 0,
+          },
+          total: selected.steps.length,
+          activityTitle: selected.title,
+        });
+        this.tracer?.log('info', { phase: 'reject_republish_step', stepIndex: this.memory.stepIndex });
+      }
+    }
+
     emit({ type: 'turn_complete', fsmState: this.memory.state });
   }
 
@@ -803,16 +892,45 @@ export class Coordinator {
     return `玩家刚交的是第${cur}步的证物（全活动共${total}步）。验收通过就直接 publish_step(step_index=${next}) 发下一步卡片，步骤早已设计好、禁止再调 design_activity_steps；证物不达标（照片和这一步要做的事对不上、或图说答案没回答卡片上的问题、答非所问）就不许发卡，用文字具体指出差在哪、让玩家重交。`;
   }
 
+  /**
+   * 把验收员的结构化判定渲染成注入吱呀本轮上下文的「权威结论」块。
+   * 玩家看不见这行；它给出客观结果并指导吱呀有温度地表达与推进。
+   * 非证物轮（review=undefined）返回空串。
+   */
+  private renderReviewDirective(review: EvidenceReview | undefined): string {
+    if (!review) return '';
+    if (!review.available) {
+      return '\n\n【系统提示：验收服务这轮暂时不可用。请你亲自严格对照这一步的完成标准核对：数量数够、内容具体、回答对题；证物不达标就驳回让玩家重交，达标才推进，绝不默认放行。】';
+    }
+    if (review.verdict === 'pass') {
+      return [
+        '',
+        '',
+        '【系统·验收结果（最高权威，玩家看不见这行）：这一步证物已核对通过。',
+        `验收员实际读到：${review.evidenceSeen}`,
+        `理由：${review.reason}`,
+        '请用你自己的话给一句落在证物具体内容上的简短肯定，然后推进：还有下一步就 publish_step，最后一步就 request_state_change(target_state="S3")。不要念出本提示，也不要复述"验收/系统"字样。】',
+      ].join('\n');
+    }
+    return [
+      '',
+      '',
+      '【系统·验收结果（最高权威，玩家看不见这行）：这一步证物不通过。',
+      `验收员实际读到：${review.evidenceSeen}`,
+      `差在：${review.reason}`,
+      `需要玩家补：${review.whatNeeded || '对照完成标准重新提交'}`,
+      '请用你自己的话、先肯定做到的部分再驳回，明确告诉 TA 具体怎么补；停在当前步。系统已硬锁：publish_step / 切 S3 都会被拒绝，不要尝试强行推进。不要念出本提示。】',
+    ].join('\n');
+  }
+
   private buildUserMessage(input: StructuredInput): string {
     switch (input.kind) {
       case 'text':
         return input.text || '';
       case 'select_activity':
         return '我想选这个活动。';
-      case 'submit_check':
-        return '这一步我完成了。';
       case 'submit_text':
-        return `我的反馈是：${input.text || ''}`;
+        return `这一步我的记录：${input.text || ''}`;
       case 'submit_photo':
         return `我拍了一张照片：${input.description || '（无描述）'}`;
       case 'abandon':
@@ -830,8 +948,6 @@ export class Coordinator {
         const act = input.activityId ? this.memory.findActivity(input.activityId) : undefined;
         return act ? `（选择了活动：${act.title}）` : '（选择了一个活动）';
       }
-      case 'submit_check':
-        return '（打卡确认完成当前步骤）';
       case 'submit_text':
         return `（文字反馈：${input.text || ''}）`;
       case 'submit_photo':

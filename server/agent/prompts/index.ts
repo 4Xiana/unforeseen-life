@@ -25,13 +25,25 @@ export function buildS1SelectActivityMessage(title: string): string {
 
 export const S1_ABANDON_MESSAGE = `算了，我先不玩了，下次吧。`;
 
-export const S2_SUBMIT_CHECK_MESSAGE = `这一步我做完啦，你看看。`;
-
-export function buildS2SubmitTextMessage(text: string): string {
-  return `这一步我的反馈是：${text}`;
+/**
+ * 步骤节奏旁白：玩家交证物时，前端把实际耗时带上来。
+ * 只陈述事实、并明确"超时不影响验收"，防止模型把慢当问题；模型可自然带半句，禁止报时催促。
+ */
+export function buildStepPaceNote(elapsedSeconds?: number, suggestedSeconds?: number): string {
+  if (typeof elapsedSeconds !== 'number' || !Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return '';
+  if (!suggestedSeconds || suggestedSeconds <= 0) return '';
+  const m = Math.round(elapsedSeconds / 60);
+  const within = elapsedSeconds <= suggestedSeconds;
+  return within
+    ? `（系统附注：玩家这一步实际用了约 ${m} 分钟，卡片给的建议节奏约 ${Math.round(suggestedSeconds / 60)} 分钟，在节奏内。这只是节奏参考、不是考核，验收只看证物本身；你可以自然带半句，不要刻意报时。）`
+    : `（系统附注：玩家这一步实际用了约 ${m} 分钟，比卡片给的建议节奏（约 ${Math.round(suggestedSeconds / 60)} 分钟）慢一些——慢做完全允许，绝不是问题，不要催促或评价快慢，验收只看证物本身。）`;
 }
-export function buildS2SubmitPhotoMessage(description: string): string {
-  return `我拍了张照片，你看看：${description}`;
+
+export function buildS2SubmitTextMessage(text: string, paceNote = ''): string {
+  return `这一步我的记录：${text}${paceNote}`;
+}
+export function buildS2SubmitPhotoMessage(description: string, paceNote = ''): string {
+  return `我拍了张照片，你看看：${description}${paceNote}`;
 }
 
 export const S2_ABANDON_MESSAGE = `这个任务我不太想继续了，先放弃吧。`;

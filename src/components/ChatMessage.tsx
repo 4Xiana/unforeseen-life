@@ -1,6 +1,5 @@
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage as ChatMessageType } from '../types';
-import { XianMascot } from './XianMascot';
 
 interface Props {
   message: ChatMessageType;
@@ -64,9 +63,13 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
     <div className="flex justify-start animate-slide-in-left">
       <div className="max-w-[85%] flex gap-2.5">
         {showHeader ? (
-          <div className="avatar-badge mt-0.5 shrink-0">
-            <XianMascot variant="face" mono size={14} />
-          </div>
+          <img
+            src="/agent_avatar.png"
+            alt="吱呀"
+            width={32}
+            height={32}
+            className="w-8 h-8 rounded-full mt-0.5 shrink-0 object-cover"
+          />
         ) : (
           <div className="w-8 shrink-0" aria-hidden />
         )}
@@ -74,7 +77,7 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
           {showHeader && (
             <div className="flex items-center gap-2 mb-1.5">
               <span className="font-hand text-[15px] leading-none text-fog">
-                小闲
+                吱呀
               </span>
             </div>
           )}

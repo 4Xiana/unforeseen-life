@@ -15,21 +15,23 @@ export interface SelectActivityInput {
   activityId: string;
   geo?: GeoPoint;
 }
-export interface SubmitCheckInput {
-  type: 'submit_check';
-  geo?: GeoPoint;
-}
 export interface SubmitTextInput {
   type: 'submit_text';
   text: string;
   geo?: GeoPoint;
+  /** 这一步实际耗时（秒），由前端软计时器统计；缺省即不带节奏旁白 */
+  elapsedSeconds?: number;
 }
 export interface SubmitPhotoInput {
   type: 'submit_photo';
   description: string;
   /** 现场照片的 data URL（data:image/...;base64,...），用于多模态验收 */
   imageDataUrl?: string;
+  /** 现场照片的可访问 URL（/evidence/xxx.jpg），用于持久化到记录页 */
+  photoUrl?: string;
   geo?: GeoPoint;
+  /** 这一步实际耗时（秒），由前端软计时器统计；缺省即不带节奏旁白 */
+  elapsedSeconds?: number;
 }
 export interface AbandonInput {
   type: 'abandon';
@@ -38,7 +40,6 @@ export interface AbandonInput {
 export type UserInput =
   | UserMessageInput
   | SelectActivityInput
-  | SubmitCheckInput
   | SubmitTextInput
   | SubmitPhotoInput
   | AbandonInput;
@@ -49,12 +50,10 @@ function toStructuredInput(input: UserInput): StructuredInput {
       return { kind: 'text', text: input.text, geo: input.geo };
     case 'select_activity':
       return { kind: 'select_activity', activityId: input.activityId, geo: input.geo };
-    case 'submit_check':
-      return { kind: 'submit_check', geo: input.geo };
     case 'submit_text':
-      return { kind: 'submit_text', text: input.text, geo: input.geo };
+      return { kind: 'submit_text', text: input.text, geo: input.geo, elapsedSeconds: input.elapsedSeconds };
     case 'submit_photo':
-      return { kind: 'submit_photo', description: input.description, imageDataUrl: input.imageDataUrl, geo: input.geo };
+      return { kind: 'submit_photo', description: input.description, imageDataUrl: input.imageDataUrl, photoUrl: input.photoUrl, geo: input.geo, elapsedSeconds: input.elapsedSeconds };
     case 'abandon':
       return { kind: 'abandon', geo: input.geo };
   }
