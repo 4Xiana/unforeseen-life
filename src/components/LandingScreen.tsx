@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { XianMascot } from './XianMascot';
-import { PreferenceSheet } from './PreferenceSheet';
 import { useSpeechInput } from '../hooks/useSpeechInput';
-import type { UserProfile, SaveProfileInput, QuestPair } from '../types';
+import { useSpeechHold } from '../hooks/useSpeechHold';
+import { VoiceStatus } from './VoiceButton';
 
 interface Props {
   onStart: (freeTime?: string) => void;
-  onOpenHandbook: () => void;
-  profile: UserProfile | null;
-  pairs: QuestPair[];
-  onSaveProfile: (input: SaveProfileInput) => Promise<void> | void;
+  onResume?: () => void;
+  busy?: boolean;
+  onOpenLibrary: () => void;
+  onOpenGuide: () => void;
+  needsPreferences?: boolean;
 }
 
 const INTAKE_GROUPS: { label: string; options: string[] }[] = [
@@ -18,11 +19,11 @@ const INTAKE_GROUPS: { label: string; options: string[] }[] = [
     options: ['15分钟', '半小时', '1小时'],
   },
   {
-    label: '人在哪儿',
+    label: '位置',
     options: ['在家', '在街上', '在店里', '在公司/学校'],
   },
   {
-    label: '和谁一起',
+    label: '同行',
     options: ['一个人', '和朋友', '和对象', '和家里人'],
   },
 ];
@@ -42,17 +43,6 @@ function PencilGlyph({ size }: { size: number }) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <path d="M10.8 2.8L13.2 5.2L5.6 12.8H2.8V10L10.8 2.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
       <path d="M9.4 4.2L11.8 6.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function HeartGlyph({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 13.2C4.6 10.6 2.4 8.7 2.4 6.1C2.4 4.3 3.7 3 5.3 3C6.3 3 7.3 3.5 8 4.4C8.7 3.5 9.7 3 10.7 3C12.3 3 13.6 4.3 13.6 6.1C13.6 8.7 11.4 10.6 8 13.2Z"
-        stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
-      />
     </svg>
   );
 }
@@ -87,16 +77,13 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveProfile }: Props) {
+export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, onOpenGuide, needsPreferences }: Props) {
   const [mounted, setMounted] = useState(false);
   const [text, setText] = useState('');
-  const [pressed, setPressed] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  // 喜好档案弹层 + 首次提示的本次关闭（未填时下次进来仍提示）
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [hintDismissed, setHintDismissed] = useState(false);
   // 按住说话松手即提交：识别结束的最终文本直接拿来开局
-  const voice = useSpeechInput(text, setText, (finalText) => onStart(finalText));
+  const voice = useSpeechInput(text, setText, (finalText) => { if (!busy) onStart(finalText); });
+  const hold = useSpeechHold(voice, !voice.supported || busy);
   // voice = 默认语音主屏；keyboard = 点编辑钮后展开输入框和 chips（不支持语音时默认键盘）
   const [mode, setMode] = useState<'voice' | 'keyboard'>(voice.supported ? 'voice' : 'keyboard');
 
@@ -147,6 +134,7 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
 
   // 语音 / 键盘互切；从键盘切走时主动让输入框失焦，确保手机软键盘同步收起
   const toggleMode = () => {
+    voice.cancel();
     setMode(m => (m === 'voice' ? 'keyboard' : 'voice'));
     if (mode === 'keyboard') {
       (document.activeElement as HTMLElement | null)?.blur();
@@ -155,77 +143,24 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
 
   // 「先出发再说」：有文字按文字走，什么都没填就按 15 分钟兜底，不挡用户
   const handleGo = () => {
+    if (busy) return;
     voice.reset();
     onStart(text.trim() || '我有15分钟空闲，你看着安排吧');
-  };
-
-  // ── 按住说话手势 ──
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    setPressed(true);
-    voice.begin();
-  };
-  const finishHold = () => {
-    if (!pressed) return;
-    setPressed(false);
-    voice.end();
-  };
-  // 指针划出按钮 = 取消，不上传
-  const cancelHold = () => {
-    if (!pressed) return;
-    setPressed(false);
-    setText('');
-    setElapsed(0);
-    voice.reset();
   };
 
   const listening = voice.listening;
 
   return (
-    <div className="flex-1 w-full flex flex-col relative overflow-hidden">
+    <div className={`landing-screen landing-${mode} flex-1 min-h-0 w-full flex flex-col relative overflow-hidden`}>
+      <button className="absolute top-2 right-4 z-10 min-h-[44px] px-3 text-[12px] text-fog" onClick={() => { voice.cancel(); onOpenGuide(); }}>使用指南</button>
       {/* 装饰圆点 */}
       <div className="absolute top-10 right-8 w-24 h-24 rounded-full bg-moss/[0.05] pointer-events-none"/>
       <div className="absolute bottom-40 left-6 w-16 h-16 rounded-full bg-orange/[0.07] pointer-events-none"/>
       <div className="absolute top-1/3 left-2 w-10 h-10 rounded-full bg-teal/[0.06] pointer-events-none"/>
 
-      {/* ── 右上角：喜好档案入口；未完成首访引导时带呼吸红点 ── */}
-      <div className="absolute top-3 right-3 z-10">
-        <button
-          type="button"
-          aria-label={profile?.onboarded ? '编辑喜好档案' : '填写喜好，让推荐更准'}
-          onClick={() => setSheetOpen(true)}
-          className="relative w-9 h-9 rounded-full bg-card/80 backdrop-blur border border-paper-edge/70 shadow-sm flex items-center justify-center text-moss hover:text-moss-deep active:scale-95 transition-transform"
-        >
-          <HeartGlyph size={17} />
-          {!profile?.onboarded && (
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-coral ring-2 ring-paper animate-pulse"/>
-          )}
-        </button>
-
-        {/* 首次可关闭小提示：非阻断，无视也能正常出发 */}
-        {!profile?.onboarded && !hintDismissed && (
-          <div className="absolute top-11 right-0 w-44 index-card p-2.5 animate-fade-in">
-            <button
-              type="button"
-              aria-label="关闭提示"
-              onClick={() => setHintDismissed(true)}
-              className="absolute top-1 right-1.5 text-fog/70 hover:text-ink text-[13px] leading-none"
-            >
-              ×
-            </button>
-            <p
-              className="text-ink-2 text-[12px] leading-[1.7] pr-3"
-              onClick={() => setSheetOpen(true)}
-            >
-              点这里告诉我你的喜好，我能把支线推得更合你心意 ✨
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* ── 顶部：吱呀 + 名字 + slogan ── */}
-      <div className={`shrink-0 flex flex-col items-center pt-12 px-6 bg-paper transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-        <XianMascot variant="face" size={152} />
+      <div className={`landing-hero shrink-0 flex flex-col items-center pt-12 px-6 bg-paper transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
+        <XianMascot variant="face" size={152} className="landing-mascot" />
         <div className="font-display text-ink text-[21px] leading-none mt-1.5">吱呀</div>
         <h1 className="font-slogan text-ink text-[20px] leading-none mt-3">
           生活有主线，快乐在支线
@@ -236,15 +171,15 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
       </div>
 
       {/* ── 中部：语音 / 键盘 二态；矮屏时整区可滚动，绝不与底部按钮重叠 ── */}
-      <div ref={scrollRef} className="flex-1 min-h-0 w-full max-w-sm mx-auto px-6 overflow-y-auto scrollbar-hide">
+      <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 sm:px-6 overflow-y-auto scrollbar-hide">
         {mode === 'voice' ? (
-          <div key="voice" className="min-h-full flex flex-col justify-start items-center pt-6 animate-fade-in">
+          <div key="voice" className="landing-voice-content min-h-full flex flex-col justify-start items-center pt-6 animate-fade-in">
             {/* 引导语 / 实时转写卡 */}
             <div className="w-full min-h-[64px] flex items-center justify-center px-2 mb-4">
-              {listening ? (
+              {voice.active || text.trim() ? (
                 <div className="index-card w-full px-4 py-3" style={{ transform: 'rotate(-0.6deg)' }}>
                   <p className="text-ink text-[14px] leading-[1.7]">
-                    {text.trim() || <span className="text-fog/70">正在聆听，说吧…</span>}
+                    {text.trim() || <span className="text-fog/70">{listening ? '正在聆听，说吧…' : '请等麦克风就绪…'}</span>}
                   </p>
                 </div>
               ) : (
@@ -263,14 +198,11 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
             <button
               type="button"
               aria-label="按住说话，松开发送"
-              onPointerDown={handlePointerDown}
-              onPointerUp={finishHold}
-              onPointerLeave={cancelHold}
-              onPointerCancel={cancelHold}
-              onContextMenu={e => e.preventDefault()}
-              className="relative w-[112px] h-[112px] rounded-full text-card bg-moss hover:bg-moss-deep shadow-btn flex items-center justify-center touch-none select-none transition-all duration-200"
+              disabled={!voice.supported || busy}
+              {...hold.handlers}
+              className="landing-mic relative shrink-0 w-[112px] h-[112px] rounded-full text-card bg-moss hover:bg-moss-deep shadow-btn flex items-center justify-center touch-none select-none transition-all duration-200"
               style={{
-                transform: listening ? 'scale(1.08)' : pressed ? 'scale(0.96)' : 'scale(1)',
+                transform: listening ? 'scale(1.08)' : hold.pressed ? 'scale(0.96)' : 'scale(1)',
               }}
             >
               {listening && (
@@ -279,18 +211,17 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
               <MicGlyph size={32} />
             </button>
             <span className="text-[14px] mt-2.5 text-fog">
-              {listening ? '松开，立即出发' : '按住说话'}
+              {voice.phase === 'starting' ? '正在启动麦克风' : listening && hold.pressed ? '松开发送，上滑取消' : listening ? '正在聆听…' : voice.phase === 'stopping' ? '正在整理文字' : '按住说话'}
             </span>
 
-            {voice.error && (
-              <p className="mt-3 text-coral text-[12.5px] text-center leading-relaxed">
-                {voice.error}
-              </p>
-            )}
+            <button type="button" onClick={hold.toggle} disabled={!voice.supported || busy || voice.phase === 'stopping'} className="text-[13px] text-moss-deep px-3 py-2 mt-1 rounded-full disabled:opacity-40">
+              {voice.active ? '结束并发送' : '也可以点击录音'}
+            </button>
+            <VoiceStatus phase={voice.phase} error={voice.error || (!voice.supported ? '当前浏览器不支持语音识别，可以使用键盘上的语音输入。' : null)} />
           </div>
         ) : (
           <div key="keyboard" className="animate-fade-in flex flex-col pt-1 pb-10">
-            <div className="bg-card border-2 border-paper-edge/80 rounded-3xl p-4 shadow-paper">
+            <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 sm:p-4 shadow-paper">
               {INTAKE_GROUPS.map((g, gi) => (
                 <div
                   key={g.label}
@@ -298,8 +229,8 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
                     ? 'flex items-start gap-2.5'
                     : 'flex items-start gap-2.5 border-t border-dashed border-ink/10 mt-3.5 pt-3'}
                 >
-                  <span className="shrink-0 w-14 pt-1.5 text-right font-hand text-fog text-[13px]">{g.label}</span>
-                  <div className="flex-1 flex flex-wrap gap-1.5">
+                  <span className="shrink-0 w-12 sm:w-14 pt-3 text-right font-hand text-fog text-[13px]">{g.label}</span>
+                  <div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
                     {g.options.map(phrase => (
                       <Chip
                         key={phrase}
@@ -314,10 +245,11 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
               ))}
             </div>
 
-            <div className="relative mt-4">
+            <div className="landing-input relative mt-4">
               <input
                 id="landing-text-input"
                 type="text"
+                aria-label="位置、空闲时间和同行的人"
                 value={text}
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleGo()}
@@ -327,6 +259,7 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
               <button
                 type="button"
                 aria-label="发送，让吱呀带你出发"
+                disabled={busy}
                 onClick={handleGo}
                 className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-moss hover:bg-moss-deep text-card flex items-center justify-center active:scale-95 transition-all"
               >
@@ -337,20 +270,19 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
         )}
       </div>
 
-      {/* ── 底部操作条：支线手账 / 编辑(键盘) / 先出发再说 ── */}
-      <div className="shrink-0 px-7 pb-7 pt-2">
-        <div className="max-w-sm mx-auto flex items-center justify-between">
+      {/* ── 底部操作条：统一手册 / 编辑(键盘) / 先出发再说 ── */}
+      <div className="landing-footer shrink-0 px-7 pb-7 pt-2">
+        <div className="landing-actions max-w-sm mx-auto flex items-center justify-between">
           <button
             type="button"
-            aria-label="支线手账"
-            onClick={onOpenHandbook}
-            className="rounded-full pl-4 pr-5 py-3 text-[15px] flex items-center gap-1.5 bg-card text-ink active:scale-95 transition-transform"
+            aria-label="我的手册"
+            onClick={() => { voice.cancel(); onOpenLibrary(); }}
+            className="relative rounded-2xl px-4 py-2 text-[15px] flex flex-col items-center bg-card text-ink active:scale-95 transition-transform"
             style={{ boxShadow: '0 2px 8px rgba(45,42,38,0.06)' }}
           >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="text-orange">
-              <path d="M7 1L8.5 4.5L12 5L9.5 7.5L10 11L7 9.5L4 11L4.5 7.5L2 5L5.5 4.5L7 1Z" fill="currentColor" strokeLinejoin="round"/>
-            </svg>
-            支线手账
+            <span className="flex items-center gap-1.5"><span className="text-moss" aria-hidden>✳</span>我的手册
+              {needsPreferences && <span className="w-1.5 h-1.5 bg-coral rounded-full" aria-hidden />}
+            </span>
           </button>
 
           <button
@@ -364,22 +296,15 @@ export function LandingScreen({ onStart, onOpenHandbook, profile, pairs, onSaveP
 
           <button
             type="button"
-            aria-label="先出发再说"
-            onClick={handleGo}
+            aria-label={onResume ? '继续当前支线' : '先出发再说'}
+            onClick={onResume ? () => { voice.cancel(); onResume(); } : handleGo}
             className="rounded-full px-6 py-3 text-[15px] text-card bg-moss hover:bg-moss-deep shadow-btn active:scale-95 transition-all"
           >
-            先出发再说
+            {onResume ? '继续当前支线' : '先出发再说'}
           </button>
         </div>
       </div>
 
-      <PreferenceSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        initial={profile}
-        pairs={pairs}
-        onSave={onSaveProfile}
-      />
     </div>
   );
 }

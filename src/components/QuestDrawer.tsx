@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { FSMState, QuestProgress, PublishedStep, ActivityPlan, ArchivedQuest } from '../types';
 import { submissionTypeShort, StepSubmitArea } from './TaskStep';
+import { JourneyContext } from './JourneyContext';
 import { ActivityCards } from './ActivityCards';
 import { StepTimer, OnTimeStamp } from './StepTimer';
 import type { StepTimerApi } from '../hooks/useStepTimer';
@@ -41,7 +42,7 @@ function Rail({ dot, isLast, lineTone, children }: {
     : lineTone === 'active' ? 'bg-moss/40'
     : 'bg-fog-light/60';
   return (
-    <div className="flex gap-3">
+    <div className="quest-rail flex gap-2 sm:gap-3">
       <div className="flex flex-col items-center">
         {dot}
         {!isLast && (
@@ -311,6 +312,7 @@ export function QuestDrawer({
         <div className="bg-card border border-fog-light/70 rounded-2xl px-3.5 py-3 shadow-paper-sm">
           <StageLabel tone={finished ? 'teal' : 'moss'}>第 {journeyNo} 条支线 · 已选定</StageLabel>
           <p className="text-ink font-semibold text-[14px] mt-1 leading-snug">「{quest.title}」</p>
+          <JourneyContext journey={quest.steps[0]?.journey} />
         </div>
       </Rail>,
     );
@@ -347,7 +349,7 @@ export function QuestDrawer({
               <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M5 8L7 10L11 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <p className="font-hand text-[14px] text-teal leading-snug">这条支线走完了，戳记已经盖进手账。</p>
+            <p className="font-hand text-[14px] text-teal leading-snug">这条支线走完了，已经存入日常记录。</p>
           </div>
         </Rail>,
       );
@@ -366,15 +368,18 @@ export function QuestDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 animate-fade-in"
+      className="viewport-overlay fixed inset-0 z-50 animate-fade-in"
       style={{ background: 'rgba(45,42,38,0.35)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <aside
-        className="absolute right-0 top-0 h-full w-full max-w-sm bg-paper shadow-paper-lg flex flex-col animate-slide-in-right"
+        role="dialog"
+        aria-modal="true"
+        aria-label="任务进度"
+        className="quest-drawer absolute right-0 top-0 h-full w-full max-w-sm bg-paper shadow-paper-lg flex flex-col animate-slide-in-right"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 pt-7 pb-4 shrink-0 border-b border-fog-light/40">
+        <div className="panel-header px-6 pt-7 pb-4 shrink-0 border-b border-fog-light/40">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="font-display text-ink text-[22px] leading-none">任务进度</h2>
@@ -392,7 +397,7 @@ export function QuestDrawer({
           </div>
         </div>
 
-        <div className="px-6 py-5 overflow-y-auto min-h-0">
+        <div className="panel-content flex-1 px-6 py-5 overflow-y-auto min-h-0">
           {quest && !picking && (
             <div className="flex items-center gap-3 mb-5">
               <span
@@ -433,7 +438,7 @@ export function QuestDrawer({
         </div>
 
         {canAbandon && (
-          <div className="shrink-0 px-6 pt-3 pb-6 border-t border-fog-light/40">
+          <div className="panel-footer shrink-0 px-6 pt-3 pb-6 border-t border-fog-light/40">
             <button
               onClick={onAbandon}
               disabled={isStreaming}

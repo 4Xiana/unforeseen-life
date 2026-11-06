@@ -10,6 +10,7 @@ const TRANSCRIPT_WINDOW = 24;
 const TRANSCRIPT_ENTRY_MAX = 300;
 
 export class WorkingMemory {
+  requestedGoalId?: string;
   private fsmState: FSMState;
   private collectedInfo: CollectedInfo;
   private proposedActivities: ActivityPlan[];
@@ -18,14 +19,15 @@ export class WorkingMemory {
   private currentTime: string;
   private transcript: TranscriptEntry[];
 
-  constructor() {
-    this.fsmState = 'S0';
-    this.collectedInfo = {};
-    this.proposedActivities = [];
-    this.selectedActivity = null;
-    this.currentStepIndex = 0;
+  constructor(snapshot?: WorkingMemorySnapshot) {
+    this.requestedGoalId = snapshot?.requestedGoalId;
+    this.fsmState = snapshot?.fsmState ?? 'S0';
+    this.collectedInfo = structuredClone(snapshot?.collectedInfo ?? {});
+    this.proposedActivities = structuredClone(snapshot?.proposedActivities ?? []);
+    this.selectedActivity = structuredClone(snapshot?.selectedActivity ?? null);
+    this.currentStepIndex = snapshot?.currentStepIndex ?? 0;
     this.currentTime = new Date().toISOString();
-    this.transcript = [];
+    this.transcript = structuredClone(snapshot?.transcript ?? []);
   }
 
   get state(): FSMState {
@@ -101,6 +103,10 @@ export class WorkingMemory {
     if (!target || !target.steps) return false;
     const step = target.steps[this.currentStepIndex];
     if (!step) return false;
+    if (target.journey && (
+      evidence.type !== step.submissionType || !evidence.text?.trim()
+      || (step.submissionType === 'photo' && !evidence.photoUrl?.startsWith('/evidence/'))
+    )) return false;
     step.submittedEvidence = { ...evidence, at: new Date().toISOString() };
     return true;
   }
@@ -138,6 +144,7 @@ export class WorkingMemory {
 
   snapshot(): WorkingMemorySnapshot {
     return {
+      requestedGoalId: this.requestedGoalId,
       fsmState: this.fsmState,
       collectedInfo: { ...this.collectedInfo },
       proposedActivities: this.proposedActivitiesList,

@@ -4,6 +4,7 @@ import type { EmitEvent } from '../llm/runner-provider.js';
 import type { AtomTool } from '../tools/atom-tools.js';
 
 export interface StructuredInput {
+  goalId?: string;
   kind: 'text' | 'select_activity' | 'submit_text' | 'submit_photo' | 'abandon';
   text?: string;
   activityId?: string;

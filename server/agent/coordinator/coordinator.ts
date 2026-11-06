@@ -21,6 +21,8 @@ import { reviewEvidence } from '../review/evidence-reviewer.js';
 import type { EvidenceReview } from '../review/evidence-reviewer.js';
 import type { SessionTracer } from '../tracer/tracer.js';
 import { SUBMISSION_PROMPTS } from '../prompts/tool-meta.js';
+import { getGoalStore } from '../../goal-store.js';
+import { getInspirationStore } from '../../inspiration.js';
 
 const RUN_MAX_TURNS = 10;
 
@@ -100,10 +102,10 @@ export class Coordinator {
   readonly llm: LLMRunnerProvider;
   private tracer: SessionTracer | null;
 
-  constructor(id: string, clientId: string, tracer?: SessionTracer) {
+  constructor(id: string, clientId: string, tracer?: SessionTracer, snapshot?: WorkingMemorySnapshot) {
     this.id = id;
     this.clientId = clientId;
-    this.memory = new WorkingMemory();
+    this.memory = new WorkingMemory(snapshot);
     this.tracer = tracer ?? null;
     this.fsm = new StateMachine(this.memory, {
       onTransition: (from, to, reason) => {
@@ -195,6 +197,10 @@ export class Coordinator {
     let evidenceReview: EvidenceReview | undefined;
 
     try {
+      if (input.goalId && this.memory.state === 'S0') {
+        getGoalStore().get(this.clientId, input.goalId);
+        this.memory.requestedGoalId = input.goalId;
+      }
       // ── 预处理：把 UI 交互包装成自然语言（不做信息提取/memory写入/决策）─────
       let userMessage = '';
       const preprocessResult = configBefore.onUserInput
@@ -247,6 +253,11 @@ export class Coordinator {
 
       // ── 状态切换回调：派发 state_changed、执行目标状态 onEnter、回传即时提示 ──
       const onStateChange = async (from: FSMState, to: FSMState, reason: string): Promise<string | void> => {
+        if (to === 'S3' && this.memory.selected?.journey) {
+          const goal = getGoalStore().complete(this.clientId, this.memory.selected, this.id);
+          trackedEmit({ type: 'goal_updated', goal });
+        }
+        if (to === 'S0' || to === 'S1') getGoalStore().release(this.clientId, this.id);
         trackedEmit({ type: 'state_changed', from, to, reason });
         // 切换到 S1/S2 的瞬间若模型已经说过承接句，切换后到出卡前的文字一律硬抑制，防双段
         if ((to === 'S1' || to === 'S2') && from !== to) {
@@ -376,6 +387,10 @@ export class Coordinator {
           trackedEmit({ type: 'stepping', text: '正在核对证物…' });
           const tRev = Date.now();
           evidenceReview = await reviewEvidence({
+            priorEvidence: this.memory.selected?.journey ? JSON.stringify({
+              previousChapters: JSON.parse(getGoalStore().evidenceContext(this.clientId, this.memory.selected.journey.goalId)),
+              currentChapter: this.memory.selected.steps?.filter(s => s.submittedEvidence).map(s => ({ instruction: s.instruction, evidence: s.submittedEvidence })),
+            }) : undefined,
             step: currentStep,
             kind: input.kind,
             text: input.kind === 'submit_text' ? input.text : input.description,
@@ -407,9 +422,17 @@ export class Coordinator {
           });
         }
       }
+      if (evidenceReview) {
+        // 原始验收结论与已写入的通过证物一并形成持久化检查点。
+        trackedEmit({ type: 'evidence_reviewed', stepIndex: this.memory.stepIndex, review: evidenceReview });
+      }
       const reviewDirective = this.renderReviewDirective(evidenceReview);
+      const playerProfile = await getProfile(this.clientId);
 
       const tools = createAtomTools({
+        mixActivities: activities => getInspirationStore().mix(this.clientId, getGoalStore().mix(this.clientId, activities, this.memory.collected, this.memory.requestedGoalId), this.memory.collected, playerProfile),
+        claimActivity: activity => { getGoalStore().claim(this.clientId, activity, this.id); this.memory.requestedGoalId = undefined; },
+        validateCompletion: activity => getGoalStore().validateCompletion(this.clientId, activity, this.id),
         memory: this.memory,
         fsm: this.fsm,
         emit: trackedEmit,
@@ -469,6 +492,24 @@ export class Coordinator {
         inputItems.push({ role: 'user', content: (userMessage || '（空消息）') + reviewDirective });
       }
 
+      // 服务在 S2 入场后、设计步骤前退出：恢复后补展开手册，不依赖已丢失的工具结果。
+      if (this.memory.state === 'S2' && this.memory.selected && !this.memory.selected.steps?.length) {
+        enteredS2ThisTurn = true;
+        const hint = getStateConfig('S2').onEnter?.({
+          memory: this.memory, emit: trackedEmit, reason: '恢复尚未设计步骤的任务',
+          hasSpoken: () => assistantText.trim().length > 0,
+        });
+        const result = await hint;
+        if (result?.injectedInstruction) inputItems.push({ role: 'user', content: result.injectedInstruction });
+      }
+      const savedEvidence = this.memory.selected?.steps?.[this.memory.stepIndex]?.submittedEvidence;
+      if (input.kind === 'text' && this.memory.state === 'S2' && savedEvidence) {
+        inputItems.push({
+          role: 'user',
+          content: `【已保存的验收进度】当前第 ${this.memory.stepIndex + 1} 步的证物已经通过且持久保存：${savedEvidence.text || '现场照片'}。如果玩家要继续，直接发下一步卡片；当前是末步则按手册收官，不要让玩家重复提交已通过的证物。`,
+        });
+      }
+
       // ── 放弃 = 确定性流转：玩家点了"放弃"，立刻退回"挑选支线"(S1)，不靠模型自觉调工具 ──
       // 直接回 S1 而非 S0：任务 tag/抽屉全程不卸载（进行中→再挑选无缝衔接），护栏同轮保证重新发卡；
       // state_changed(S1) 驱动前端把刚放下的支线以"已放下"归档进时间轴。
@@ -496,7 +537,7 @@ export class Coordinator {
         totalInvokes++;
         // 每次尝试前按最新状态重组装 context（snapshot 随状态变化；行动手册走 get_skill 工具通道）
         const handbookBrief = buildHandbookBrief(await getView(this.clientId));
-        const profileBrief = buildProfileBrief(await getProfile(this.clientId));
+        const profileBrief = buildProfileBrief(playerProfile);
         const ctx = assembleContext(this.memory, handbookBrief, renderEnvBrief(envContext), profileBrief);
 
         // 流式台词净化：跨 chunk 丢弃括号旁白/图片链接/元文本
@@ -505,7 +546,7 @@ export class Coordinator {
           {
             userMessage,
             inputItems,
-            instructions: ctx.full,
+            instructions: ctx.full + getGoalStore().context(this.clientId, this.memory.selected?.journey?.goalId ?? this.memory.requestedGoalId) + getInspirationStore().context(this.clientId, this.memory.selected),
             contextLayers: ctx.layers,
             tools,
             label: totalInvokes === 1 ? 'main' : `guard-nudge-${totalInvokes - 1}`,
@@ -598,6 +639,8 @@ export class Coordinator {
             ) {
               const act = this.memory.findActivity(input.activityId);
               if (act) {
+                getGoalStore().claim(this.clientId, act, this.id);
+                this.memory.requestedGoalId = undefined;
                 this.memory.setSelectedActivity(act);
                 const tr = await this.fsm.requestTransition(
                   'S2',
@@ -658,6 +701,7 @@ export class Coordinator {
         emit({
           type: 'step_published',
           step: {
+            journey: selected.journey,
             index: this.memory.stepIndex,
             instruction: currentStep.instruction,
             hint: currentStep.hint,

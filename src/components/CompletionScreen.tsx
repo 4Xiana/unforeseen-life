@@ -1,4 +1,4 @@
-import type { QuestReward } from '../hooks/useAgentSession';
+import type { QuestReward, GoalNotice } from '../hooks/useAgentSession';
 import { CATEGORY_META } from '../handbook';
 
 interface Props {
@@ -6,20 +6,22 @@ interface Props {
   totalCount: number;
   onDismiss: () => void;
   onViewHandbook: () => void;
+  goalNotice?: GoalNotice | null;
+  onViewGoals?: () => void;
 }
 
-export function CompletionScreen({ reward, totalCount, onDismiss, onViewHandbook }: Props) {
+export function CompletionScreen({ reward, totalCount, onDismiss, onViewHandbook, goalNotice, onViewGoals }: Props) {
   const meta = reward ? CATEGORY_META[reward.category] : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in"
+    <div className="viewport-overlay completion-overlay fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in"
       style={{ background: 'rgba(253,251,247,0.92)', backdropFilter: 'blur(6px)' }}>
 
-      <div className="relative max-w-sm w-full animate-slide-up">
+      <div role="dialog" aria-modal="true" aria-label="支线完成" className="completion-shell relative max-w-sm w-full animate-slide-up">
         <div className="tape tape-top-left" style={{ width: '60px', height: '18px', background: 'rgba(114,148,81,0.3)' }}/>
         <div className="tape tape-top-right" style={{ width: '60px', height: '18px', background: 'rgba(63,162,143,0.28)' }}/>
 
-        <div className="bg-card border border-ink/[0.07] p-8 rounded-[28px] shadow-paper-lg text-center relative overflow-hidden">
+        <div className="completion-card bg-card border border-ink/[0.07] p-5 sm:p-8 rounded-[28px] shadow-paper-lg text-center relative overflow-hidden">
           <div className="relative">
             <div className="mx-auto mb-6 w-28 h-28 flex items-center justify-center animate-stamp"
               style={{ color: meta?.color ?? 'var(--teal)', transform: 'rotate(-8deg)' }}>
@@ -52,7 +54,7 @@ export function CompletionScreen({ reward, totalCount, onDismiss, onViewHandbook
               支线完成
             </h2>
             <p className="text-ink-2 text-[13.5px] leading-relaxed mb-4">
-              {reward ? <>「{reward.questTitle}」已收进手账，</> : '这条支线已收进手账，'}
+              {reward ? <>「{reward.questTitle}」已存入日常记录，</> : '这条支线已存入日常记录，'}
               <br/>
               这是你地图上的第 <span className="font-display" style={{ color: meta?.color ?? 'var(--teal)' }}>{totalCount || 1}</span> 个坐标。
             </p>
@@ -82,11 +84,16 @@ export function CompletionScreen({ reward, totalCount, onDismiss, onViewHandbook
             </div>
 
             <div className="flex flex-col gap-2.5">
+              {goalNotice && <div className="p-3 mb-2 rounded-xl bg-moss/10 text-moss-deep text-[13px] leading-relaxed">
+                <p>「{goalNotice.title}」· {goalNotice.completed}/{goalNotice.total} 章</p>
+                {goalNotice.rewards.map(name => <p key={name}>✳ {name}</p>)}
+                <button onClick={onViewGoals} className="min-h-[44px] underline">查看心愿成果 →</button>
+              </div>}
               <button
                 onClick={onViewHandbook}
                 className="w-full py-3 px-6 bg-card text-ink font-display text-[16px] rounded-full border border-paper-edge hover:border-moss/50 hover:text-moss-deep transition-all duration-200 active:scale-[0.97]"
               >
-                翻翻手账
+                查看日常记录
               </button>
               <button
                 onClick={onDismiss}

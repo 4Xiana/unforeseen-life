@@ -1,0 +1,11 @@
+.journey-context{margin:12px 0;padding:12px 16px;border:1px dashed var(--moss);border-radius:7px 16px 16px 7px;background:var(--paper);font-size:13px;line-height:1.85;overflow-wrap:anywhere;color:var(--ink-2)}
+.journey-context .journey-heading{font-family:var(--font-hand,inherit);color:var(--moss-deep);margin-bottom:5px}
+.journey-context .journey-first{color:var(--fog);font-size:12px;margin-top:5px}
+.journey-context summary{cursor:pointer;min-height:44px;padding:10px 0;color:var(--moss-deep)}
+.journey-context :focus-visible{outline:2px solid var(--moss);outline-offset:3px}
+.journey-context button{min-height:44px;margin-left:12px;text-decoration:underline}
+.journey-record{border-top:1px dashed var(--fog-light);padding:12px 0}
+.journey-record h4{font-size:14px;font-weight:600}.journey-record time{font-size:12px;color:var(--fog)}
+.journey-record>div{margin-top:12px}.journey-record blockquote{white-space:pre-wrap;border-left:2px solid var(--moss);padding:8px 12px;background:var(--card)}
+.journey-record a{display:block;min-height:44px;color:var(--moss-deep)}
+.journey-record img{display:block;max-width:100%;max-height:280px;object-fit:contain;border-radius:6px;margin:8px 0}

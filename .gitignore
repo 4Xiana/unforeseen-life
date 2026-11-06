@@ -22,6 +22,7 @@ dist-ssr
 .trae/
 server/data/*.json
 server/data/evidence/
+server/data/*.sqlite*
 !server/data/.gitkeep
 docs/screenshots.zip
 

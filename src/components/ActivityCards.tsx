@@ -1,4 +1,5 @@
 import type { ActivityPlan } from '../types';
+import { JourneyContext } from './JourneyContext';
 
 interface Props {
   activities: ActivityPlan[];
@@ -39,7 +40,7 @@ function ActivityCardVertical({ activity, i, onSelect, disabled, locked }: {
         animationDelay: `${i * 80}ms`,
       }}
     >
-      <div className="flex items-start gap-3 pr-7">
+      <div className="activity-card-content flex items-start gap-2 sm:gap-3 pr-5 sm:pr-7">
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 font-display hollow-num"
           style={{
@@ -53,6 +54,7 @@ function ActivityCardVertical({ activity, i, onSelect, disabled, locked }: {
         </div>
 
         <div className="flex-1 min-w-0">
+          {activity.journey && <div className="mb-2 text-[12px] text-moss-deep leading-relaxed">✳ {activity.journey.title} · 第 {activity.journey.ordinal}/{activity.journey.total} 章</div>}
           <h3 className="font-display text-[16px] text-ink mb-1 leading-snug">
             {activity.title}
           </h3>
@@ -61,9 +63,10 @@ function ActivityCardVertical({ activity, i, onSelect, disabled, locked }: {
           </p>
           <div className="flex flex-wrap gap-1.5">
             {activity.tags.map((tag) => (
-              <span key={tag} className={`tag ${tagColor(tag)}`}>{tag}</span>
+              <span key={tag} className={`tag ${tagColor(tag)}`}>{activity.journey && tag === '长程支线' ? '心愿计划' : tag}</span>
             ))}
           </div>
+          {activity.journey && <p className="text-[12px] text-fog mt-3 leading-relaxed whitespace-pre-wrap">{activity.journey.purpose}<br />{activity.journey.previous}</p>}
         </div>
       </div>
 
@@ -83,7 +86,7 @@ export function ActivityCards({ activities, onSelect, disabled, locked }: Props)
   if (activities.length === 0) return null;
 
   return (
-    <div className="my-5 animate-fade-in">
+    <div className="activity-list my-3 sm:my-5 animate-fade-in">
       <div className="section-label mb-3 px-1">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-fog">
           <path d="M6 1L7.5 4.5L11 5L8.5 7.5L9 11L6 9.5L3 11L3.5 7.5L1 5L4.5 4.5L6 1Z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round"/>
@@ -93,14 +96,16 @@ export function ActivityCards({ activities, onSelect, disabled, locked }: Props)
 
       <div className="space-y-3">
         {activities.map((activity, i) => (
+          <div key={activity.id}>
           <ActivityCardVertical
-            key={activity.id}
             activity={activity}
             i={i}
             onSelect={onSelect}
             disabled={disabled}
             locked={locked}
           />
+          {activity.journey && activity.journey.ordinal > 1 && <JourneyContext journey={activity.journey} />}
+          </div>
         ))}
       </div>
     </div>

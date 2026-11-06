@@ -52,7 +52,7 @@ export function StepTimer({ timer, compact }: Props) {
 
   return (
     <div
-      className={`flex items-center rounded-2xl border bg-paper/70 ${
+      className={`step-timer max-w-full flex items-center rounded-2xl border bg-paper/70 ${
         compact ? 'gap-2 px-2.5 py-1.5 border-fog-light/70' : 'gap-3 px-3 py-2 border-fog-light'
       }`}
     >
@@ -85,7 +85,7 @@ export function StepTimer({ timer, compact }: Props) {
       </div>
 
       <div className="flex flex-col gap-1 min-w-0">
-        <span className={`font-hand leading-none ${tone} ${compact ? 'text-[11.5px]' : 'text-[13px]'}`}>
+        <span className={`font-hand leading-snug ${tone} ${compact ? 'text-[11.5px]' : 'text-[13px]'}`}>
           {timer.overtime
             ? '不急，做完再交'
             : timer.paused

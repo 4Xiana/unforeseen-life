@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage as ChatMessageType } from '../types';
+import { appUrl } from '../paths';
 
 interface Props {
   message: ChatMessageType;
@@ -39,11 +40,11 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
   if (!isNpc) {
     return (
       <div className="flex justify-end animate-slide-in-right">
-        <div className="max-w-[78%]">
+        <div className="user-message min-w-0 max-w-[88%] sm:max-w-[78%]">
           <div className="sticky-note rotate-neg-1 text-ink text-[14px] leading-[1.8] whitespace-pre-wrap break-words">
             {message.imageUrl && (
               <img
-                src={message.imageUrl}
+                src={appUrl(message.imageUrl)}
                 alt="我提交的现场照片"
                 className="w-full max-w-[240px] rounded-xl border border-paper-edge/70 mb-2 object-cover"
               />
@@ -61,10 +62,10 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
 
   return (
     <div className="flex justify-start animate-slide-in-left">
-      <div className="max-w-[85%] flex gap-2.5">
+      <div className="npc-envelope min-w-0 max-w-full sm:max-w-[85%] flex gap-2.5">
         {showHeader ? (
           <img
-            src="/agent_avatar.png"
+            src={appUrl('agent_avatar.png')}
             alt="吱呀"
             width={32}
             height={32}

@@ -22,7 +22,7 @@ export function DockSkeleton({ type, label }: Props) {
 
   if (type === 'activities') {
     return (
-      <div className="my-5">
+      <div className="my-3 sm:my-5">
         <div className="section-label mb-3 px-1">
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="text-fog">
             <path d="M6 1L7.5 4.5L11 5L8.5 7.5L9 11L6 9.5L3 11L3.5 7.5L1 5L4.5 4.5L6 1Z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round"/>
@@ -67,7 +67,7 @@ export function DockSkeleton({ type, label }: Props) {
 
   return (
     <div className="my-4">
-      <div className="paper-card p-5 relative overflow-hidden rounded-[24px]">
+      <div className="paper-card p-3 sm:p-5 relative overflow-hidden rounded-[24px]">
         <div className="flex items-center justify-between mb-4 pb-3 perforation">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-moss/50">

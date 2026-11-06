@@ -1,14 +1,18 @@
-import type { HandbookView, QuestCategory, BadgeState } from '../types';
-import { CATEGORY_META, CATEGORY_ORDER, formatDate } from '../handbook';
+import type { HandbookView, BadgeState } from '../types';
+import { CATEGORY_META, CATEGORY_ORDER } from '../handbook';
+import { QuestRecordCard } from './RecordsView';
 
 interface Props {
   view: HandbookView;
   onClose: () => void;
+  embedded?: boolean;
+  onStartQuest: () => void;
+  busy?: boolean;
 }
 
 function CategoryStamps({ view }: { view: HandbookView }) {
   return (
-    <div className="flex justify-between gap-2 mb-6">
+    <div className="category-stamps grid grid-cols-5 gap-1 sm:gap-2 mb-5">
       {CATEGORY_ORDER.map((cat) => {
         const meta = CATEGORY_META[cat];
         const count = view.stats.byCategory[cat] || 0;
@@ -36,14 +40,15 @@ function CategoryStamps({ view }: { view: HandbookView }) {
   );
 }
 
-function BadgeWall({ badges }: { badges: BadgeState[] }) {
+function BadgeWall({ badges, showConditions = false }: { badges: BadgeState[]; showConditions?: boolean }) {
   return (
-    <div className="mb-6">
+    <div className="badge-wall mb-6">
       <h3 className="font-hand text-fog text-[14px] mb-3 px-0.5">成就墙</h3>
       <div className="grid grid-cols-3 gap-2.5">
         {badges.map((b) => (
           <div
             key={b.id}
+            data-earned={b.earned}
             className="rounded-2xl border p-3 flex flex-col items-center text-center gap-1"
             style={{
               borderColor: b.earned ? 'var(--paper-edge)' : 'var(--fog-light)',
@@ -74,6 +79,7 @@ function BadgeWall({ badges }: { badges: BadgeState[] }) {
             {!b.earned && (
               <span className="font-hand text-[11px] text-fog leading-none">{b.progress}/{b.target}</span>
             )}
+            {showConditions && <small className="font-hand text-[12px] text-fog leading-relaxed">未解锁 · {b.desc}</small>}
           </div>
         ))}
       </div>
@@ -81,56 +87,26 @@ function BadgeWall({ badges }: { badges: BadgeState[] }) {
   );
 }
 
-function TicketStub({ cat, title, date, evidence }: {
-  cat: QuestCategory; title: string; date: string; evidence?: string;
-}) {
-  const meta = CATEGORY_META[cat];
-  return (
-    <div
-      className="relative bg-card border border-ink/[0.07] rounded-2xl p-4 pl-5 shadow-paper-sm"
-      style={{ borderLeft: `3px solid ${meta.color}` }}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-display text-[15px] text-ink leading-tight">「{title}」</span>
-        <span
-          className="shrink-0 ml-2 font-hand text-[12px] px-2 py-0.5 rounded-full"
-          style={{ color: meta.color, background: `${meta.color}14` }}
-        >
-          {meta.label}
-        </span>
-      </div>
-      {evidence ? (
-        <p className="font-hand text-[13px] text-ink-2 leading-relaxed mt-1 line-clamp-2">
-          “{evidence}”
-        </p>
-      ) : (
-        <p className="font-hand text-[13px] text-fog leading-relaxed mt-1">完成了这件小事</p>
-      )}
-      <p className="text-[11px] text-fog mt-1.5">{date}</p>
-    </div>
-  );
-}
-
-export function HandbookView({ view, onClose }: Props) {
+export function HandbookView({ view, onClose, embedded = false, onStartQuest, busy = false }: Props) {
   const empty = view.stats.total === 0;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-      style={{ background: 'rgba(45,42,38,0.35)', backdropFilter: 'blur(4px)' }}>
-      <div className="relative w-full max-w-md max-h-[86vh] flex flex-col animate-slide-up">
+    <div className={embedded ? 'handbook-embedded' : 'viewport-overlay journal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in'}
+      style={embedded ? undefined : { background: 'rgba(45,42,38,0.35)', backdropFilter: 'blur(4px)' }}>
+      <div role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-label="日常记录" className="journal-shell relative w-full max-w-md max-h-[86dvh] flex flex-col animate-slide-up">
         <div className="tape tape-top-left" style={{ width: '60px', height: '18px', background: 'rgba(240,160,62,0.32)' }}/>
         <div className="tape tape-top-right" style={{ width: '60px', height: '18px', background: 'rgba(63,162,143,0.28)' }}/>
 
-        <div className="bg-paper border border-ink/[0.07] rounded-[28px] shadow-paper-lg flex flex-col min-h-0">
-          <div className="px-6 pt-7 pb-4 flex items-start justify-between shrink-0">
+        <div className="journal-panel bg-paper border border-ink/[0.07] rounded-[28px] shadow-paper-lg flex flex-col min-h-0">
+          <div className="panel-header px-6 pt-7 pb-4 flex items-start justify-between gap-3 shrink-0">
             <div>
-              <h2 className="font-display text-ink text-[24px] leading-none">支线手账</h2>
+              <h2 className="font-display text-ink text-[24px] leading-none">日常记录</h2>
               <p className="font-hand text-fog text-[14px] mt-2">
                 {empty
-                  ? '还空着——去插第一面旗吧'
+                  ? '从一条小支线，点亮第一枚成就'
                   : `已盖 ${view.stats.total} 枚戳记 · 本周出发 ${view.stats.weekCount} 次`}
               </p>
             </div>
-            <button
+            {!embedded && <button
               onClick={onClose}
               className="w-9 h-9 rounded-full bg-card border border-fog-light/70 text-fog hover:text-ink flex items-center justify-center transition-colors shrink-0"
               aria-label="关闭"
@@ -138,36 +114,24 @@ export function HandbookView({ view, onClose }: Props) {
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-            </button>
+            </button>}
           </div>
 
-          <div className="px-6 pb-6 overflow-y-auto min-h-0">
+          <div className="panel-content px-6 pb-6 overflow-y-auto min-h-0">
             {empty ? (
-              <div className="py-12 text-center">
-                <div className="mx-auto w-20 h-20 rounded-full border-2 border-dashed border-fog-light flex items-center justify-center mb-4 text-fog-light">
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 21C12 21 5 15.5 5 10C5 6.5 7.5 4 12 4C16.5 4 19 6.5 19 10C19 15.5 12 21 12 21Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
-                    <circle cx="12" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.4"/>
-                  </svg>
-                </div>
-                <p className="font-hand text-fog text-[15px] leading-relaxed">
-                  每完成一条支线，<br/>这里就多一枚戳记、多一张票根。
-                </p>
+              <div className="handbook-empty">
+                <BadgeWall badges={view.badges.filter(b => !b.earned).slice(0, 6)} showConditions />
+                <p className="font-hand text-fog text-[15px] leading-relaxed mb-4">完成支线后，成就和每一步的作品都会留在这里。</p>
+                <button type="button" disabled={busy} onClick={onStartQuest} className="w-full min-h-[48px] rounded-full bg-moss-deep text-card font-hand text-[16px] px-5 py-3 disabled:opacity-40">去开启一条支线 →</button>
               </div>
             ) : (
               <>
                 <CategoryStamps view={view} />
                 <BadgeWall badges={view.badges} />
-                <h3 className="font-hand text-fog text-[14px] mb-3">票根</h3>
+                <h3 className="font-hand text-fog text-[14px] mb-3">支线记录 · 点击展开看证物</h3>
                 <div className="space-y-2.5">
                   {view.quests.map((q) => (
-                    <TicketStub
-                      key={q.id}
-                      cat={q.category}
-                      title={q.title}
-                      date={formatDate(q.date)}
-                      evidence={q.evidence}
-                    />
+                    <QuestRecordCard key={q.id} record={q} />
                   ))}
                 </div>
               </>

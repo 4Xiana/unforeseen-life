@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { DATA_DIR } from '../../data-path.js';
 
 // ── 支线手账：跨会话持久化玩家完成过的支线（集印册 + 成就墙）─────────────────
 
@@ -163,7 +164,7 @@ export function deriveView(hb: Handbook): HandbookView {
 
 // ── JSON 文件存储（写穿 + 内存缓存，单机本地持久化）─────────────────────────
 
-const DATA_PATH = path.resolve(process.cwd(), 'data', 'handbook.json');
+const DATA_PATH = path.join(DATA_DIR, 'handbook.json');
 
 let cache: Record<string, Handbook> | null = null;
 let writeChain: Promise<void> = Promise.resolve();

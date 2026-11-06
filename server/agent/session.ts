@@ -6,6 +6,7 @@ import { SessionTracer } from './tracer/tracer.js';
 import type { GeoPoint } from './env/env-service.js';
 
 export interface UserMessageInput {
+  goalId?: string;
   type: 'text';
   text: string;
   geo?: GeoPoint;
@@ -47,7 +48,7 @@ export type UserInput =
 function toStructuredInput(input: UserInput): StructuredInput {
   switch (input.type) {
     case 'text':
-      return { kind: 'text', text: input.text, geo: input.geo };
+      return { kind: 'text', text: input.text, geo: input.geo, goalId: input.goalId };
     case 'select_activity':
       return { kind: 'select_activity', activityId: input.activityId, geo: input.geo };
     case 'submit_text':
@@ -65,11 +66,11 @@ export class AgentSession {
   private coordinator: Coordinator;
   private tracer: SessionTracer;
 
-  constructor(id: string, clientId: string) {
+  constructor(id: string, clientId: string, snapshot?: WorkingMemorySnapshot) {
     this.id = id;
     this.clientId = clientId;
     this.tracer = new SessionTracer(id);
-    this.coordinator = new Coordinator(id, clientId, this.tracer);
+    this.coordinator = new Coordinator(id, clientId, this.tracer, snapshot);
   }
 
   get ctx(): WorkingMemorySnapshot {

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getClientId } from '../handbook';
 import type {
   UserProfile,
   SaveProfileInput,
@@ -16,6 +17,9 @@ interface Props {
   initial?: UserProfile | null;
   pairs: QuestPair[];
   onSave: (input: SaveProfileInput) => Promise<void> | void;
+  embedded?: boolean;
+  guided?: boolean;
+  onSaved?: () => void;
 }
 
 // ── 情景快题：每题锚定种子库一个真实筛/排轴，选项给画面而非抽象标签 ──────────
@@ -73,7 +77,8 @@ function QuestTaskCard({ title, text, min, scenes, energy, active, onClick }: Qu
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-3xl border-2 px-4 py-3.5 flex flex-col gap-1.5 transition-all duration-200 active:scale-[0.98] ${
+      aria-pressed={active}
+      className={`w-full shrink-0 rounded-3xl border-2 px-4 py-3.5 flex flex-col gap-1.5 transition-all duration-200 active:scale-[0.98] ${
         active
           ? 'border-moss bg-moss/[10%]'
           : 'border-paper-edge/70 bg-card hover:border-fog-light'
@@ -101,6 +106,7 @@ function ScenarioCard({ emoji, label, sub, active, onClick }: CardOptProps) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`flex-1 min-w-0 rounded-2xl border-2 px-2 py-2.5 flex flex-col items-center gap-0.5 transition-all duration-200 active:scale-[0.97] ${
         active
           ? 'border-moss bg-moss/[10%]'
@@ -125,7 +131,7 @@ function GroupLabel({ children, hint }: { children: string; hint?: string }) {
   );
 }
 
-export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props) {
+export function PreferenceSheet({ open, onClose, initial, pairs, onSave, embedded = false, guided = false, onSaved }: Props) {
   const [page, setPage] = useState<'form' | 'pairs'>('form');
   const [energy, setEnergy] = useState<EnergyPref>('any');
   const [novelty, setNovelty] = useState<NoveltyPref>(0);
@@ -137,21 +143,61 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
   const [pairVotes, setPairVotes] = useState<Record<string, 'A' | 'B'>>({});
   const [pairIdx, setPairIdx] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [guideStep, setGuideStep] = useState(0);
+  const [guideStarted, setGuideStarted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const guideHeading = useRef<HTMLParagraphElement>(null);
+  const introHeading = useRef<HTMLHeadingElement>(null);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const savedCallback = useRef(onSaved);
+  savedCallback.current = onSaved;
+  const draftKey = `xian-preference-draft:${getClientId()}`;
 
   // 每次打开时，用已存档案初始化（首次打开即空表单）
   useEffect(() => {
     if (!open) return;
+    let draft: Partial<SaveProfileInput> & { guideStep?: number; guideStarted?: boolean } = {};
+    if (!initial?.onboarded) {
+      try { draft = JSON.parse(sessionStorage.getItem(draftKey) || '{}') || {}; } catch { /* no draft */ }
+    }
     setPage('form');
-    setEnergy(initial?.energy ?? 'any');
-    setNovelty(initial?.novelty ?? 0);
-    setSocial(initial?.social ?? 'any');
-    setBudget(initial?.budget ?? 'any');
-    setMechs(initial?.mechs ?? []);
-    setInterests(initial?.interests ?? '');
-    setAvoids(initial?.avoids ?? '');
-    setPairVotes(initial?.pairVotes ?? {});
+    setEnergy(draft.energy ?? initial?.energy ?? 'any');
+    setNovelty(draft.novelty ?? initial?.novelty ?? 0);
+    setSocial(draft.social ?? initial?.social ?? 'any');
+    setBudget(draft.budget ?? initial?.budget ?? 'any');
+    setMechs(draft.mechs ?? initial?.mechs ?? []);
+    setInterests(draft.interests ?? initial?.interests ?? '');
+    setAvoids(draft.avoids ?? initial?.avoids ?? '');
+    setPairVotes(draft.pairVotes ?? initial?.pairVotes ?? {});
+    setGuideStep(Math.max(0, Math.min(5, draft.guideStep ?? 0)));
+    setGuideStarted(draft.guideStarted ?? ((draft.guideStep ?? 0) > 0));
     setPairIdx(0);
+    setHydrated(true);
   }, [open, initial]);
+  useEffect(() => {
+    if (!hydrated || initial?.onboarded) return;
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ energy, novelty, social, budget, mechs, interests, avoids, pairVotes, guideStep, guideStarted })); } catch { /* private mode */ }
+  }, [hydrated, initial, draftKey, energy, novelty, social, budget, mechs, interests, avoids, pairVotes, guideStep, guideStarted]);
+  useEffect(() => {
+    if (guided) {
+      setPage('form');
+      (guideStarted ? guideHeading.current : introHeading.current)?.focus({ preventScroll: true });
+    }
+    return () => clearTimeout(advanceTimer.current);
+  }, [open, guided, guideStep, guideStarted]);
+
+  const moveGuide = (next: number) => {
+    clearTimeout(advanceTimer.current);
+    setGuideStep(next);
+  };
+  const selectScenario = (select: () => void) => {
+    select();
+    if (!guided || !guideStarted) return;
+    clearTimeout(advanceTimer.current);
+    // Keep the selected card visible briefly; repeated clicks update the choice.
+    advanceTimer.current = setTimeout(() => setGuideStep(s => Math.min(4, s + 1)), 260);
+  };
 
   if (!open) return null;
 
@@ -163,6 +209,7 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
 
   const submit = async (votes: Record<string, 'A' | 'B'>) => {
     if (saving) return;
+    setFeedback('');
     setSaving(true);
     try {
       await onSave({
@@ -175,7 +222,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
         avoids: avoids.trim(),
         pairVotes: votes,
       });
-      onClose();
+      try { sessionStorage.removeItem(draftKey); } catch { /* private mode */ }
+      savedCallback.current?.();
+      if (embedded) setFeedback('喜好已经记下了，下次推荐会参考它。');
+      else onClose();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : '暂时没能保存，请再试一次。');
     } finally {
       setSaving(false);
     }
@@ -194,24 +246,27 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
   const pair = pairs[pairIdx];
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className={[embedded ? 'preferences-embedded' : 'viewport-overlay fixed inset-0 z-50', guided ? 'preferences-guided' : ''].join(' ')}>
       {/* 遮罩 */}
-      <div
+      {!embedded && <div
         className="absolute inset-0 bg-ink/30 animate-fade-in"
         onClick={saving ? undefined : onClose}
-      />
+      />}
 
       {/* 底部弹层 */}
-      <div className="absolute inset-x-0 bottom-0 flex justify-center">
-        <div className="w-full max-w-sm max-h-[88dvh] flex flex-col bg-paper rounded-t-[28px] shadow-paper animate-slide-up overflow-hidden">
+      <div className={embedded ? 'preferences-container' : 'absolute inset-x-0 bottom-0 flex justify-center'}>
+        <div role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-label="喜好档案" className="preference-sheet w-full max-w-sm flex flex-col bg-paper rounded-t-[28px] shadow-paper animate-slide-up overflow-hidden">
           {/* 抓手条 */}
-          <div className="shrink-0 pt-2.5 pb-1 flex justify-center">
+          {!embedded && <div className="shrink-0 pt-2.5 pb-1 flex justify-center">
             <span className="w-10 h-1 rounded-full bg-fog-light/70" />
-          </div>
+          </div>}
 
           {/* 头部 */}
-          <div className="shrink-0 px-5 pt-1 pb-3 flex items-start justify-between">
-            <div>
+          <div hidden={guided && !guideStarted} className="shrink-0 px-4 sm:px-5 pt-1 pb-3 flex items-start justify-between gap-2">
+            {guided ? <div className="preference-guide-heading">
+              <p ref={guideHeading} tabIndex={-1} aria-live="polite">喜好 · {guideStep + 1} / 6 <span>{guideStep === 5 ? '再留一点自己的线索' : guideStep < 4 ? '选好就进入下一题，也可以留白' : '凭感觉选，也可以留白'}</span></p>
+              <div className="preference-guide-progress" aria-hidden>{Array.from({ length: 6 }, (_, i) => <i key={i} className={i <= guideStep ? 'filled' : ''} />)}</div>
+            </div> : <div>
               <h2 className="font-display text-ink text-[20px] leading-none">
                 让吱呀更懂你
               </h2>
@@ -220,23 +275,36 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                   ? '跟着感觉点 5 下，约半分钟，随时能改'
                   : '两件事只能选一个，凭第一感觉点'}
               </p>
-            </div>
-            <button
+            </div>}
+            {!embedded && <button
               type="button"
               aria-label="关闭"
               onClick={saving ? undefined : onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-fog hover:text-ink active:scale-95"
+              className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-fog hover:text-ink active:scale-95"
             >
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
-            </button>
+            </button>}
           </div>
+          {feedback && <p role="status" className="px-5 pb-3 text-[13px] text-moss-deep">{feedback}</p>}
 
-          {page === 'form' ? (
+          {guided && !guideStarted ? <>
+            <section className="preference-guide-intro">
+              <p className="preference-intro-eyebrow">先认识你的喜好</p>
+              <h2 ref={introHeading} tabIndex={-1}>让支线更合你的心意</h2>
+              <p>同样是下班后的十五分钟，有人想安静地做点手工，有人更想出门走走。</p>
+              <p>接下来，选一选你喜欢的节奏和玩法，也可以告诉吱呀你的兴趣与雷点。它会记进喜好档案，让以后的推荐更贴近你。</p>
+              <small>凭感觉选就好，不确定可以留白，之后随时能改。</small>
+            </section>
+            <div className="preference-guide-actions">
+              <button className="preference-guide-next" onClick={() => setGuideStarted(true)}>开始选一选 →</button>
+            </div>
+          </> : page === 'form' ? (
             <>
               {/* ── 第一页：5 道情景快题 ── */}
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-5 pb-2">
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-4 sm:px-5 pb-2">
+                <div className="preference-question" hidden={guided && guideStep !== 0}>
                 <GroupLabel>1. 没安排的时间，你身体更想？</GroupLabel>
                 <div className="flex gap-2 mb-5">
                   {ENERGY_OPTIONS.map((o) => (
@@ -244,11 +312,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                       key={o.id}
                       {...o}
                       active={energy === o.id}
-                      onClick={() => setEnergy(o.id)}
+                      onClick={() => selectScenario(() => setEnergy(o.id))}
                     />
                   ))}
                 </div>
-
+                </div>
+                <div className="preference-question" hidden={guided && guideStep !== 1}>
                 <GroupLabel>2. 哪种支线更让你心动？</GroupLabel>
                 <div className="flex gap-2 mb-5">
                   {NOVELTY_OPTIONS.map((o) => (
@@ -256,11 +325,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                       key={o.id}
                       {...o}
                       active={novelty === o.id}
-                      onClick={() => setNovelty(o.id)}
+                      onClick={() => selectScenario(() => setNovelty(o.id))}
                     />
                   ))}
                 </div>
-
+                </div>
+                <div className="preference-question" hidden={guided && guideStep !== 2}>
                 <GroupLabel>3. 你更想要的状态？</GroupLabel>
                 <div className="flex gap-2 mb-5">
                   {SOCIAL_OPTIONS.map((o) => (
@@ -268,11 +338,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                       key={o.id}
                       {...o}
                       active={social === o.id}
-                      onClick={() => setSocial(o.id)}
+                      onClick={() => selectScenario(() => setSocial(o.id))}
                     />
                   ))}
                 </div>
-
+                </div>
+                <div className="preference-question" hidden={guided && guideStep !== 3}>
                 <GroupLabel>4. 为这段支线花点小钱？</GroupLabel>
                 <div className="flex gap-2 mb-5">
                   {BUDGET_OPTIONS.map((o) => (
@@ -280,11 +351,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                       key={o.id}
                       {...o}
                       active={budget === o.id}
-                      onClick={() => setBudget(o.id)}
+                      onClick={() => selectScenario(() => setBudget(o.id))}
                     />
                   ))}
                 </div>
-
+                </div>
+                <div className="preference-question" hidden={guided && guideStep !== 4}>
                 <GroupLabel hint="可多选，不选就都试试">5. 哪种玩法听起来最好玩？</GroupLabel>
                 <div className="flex flex-wrap gap-2 mb-5">
                   {MECHANISM_OPTIONS.map((m) => {
@@ -294,6 +366,7 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                         key={m.id}
                         type="button"
                         onClick={() => toggleMech(m.id)}
+                        aria-pressed={active}
                         title={m.hint}
                         className={`px-3 py-1.5 rounded-full border text-[12.5px] transition-all duration-200 active:scale-95 ${
                           active
@@ -306,10 +379,12 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                     );
                   })}
                 </div>
-
+                </div>
+                <div className="preference-question" hidden={guided && guideStep !== 5}>
                 <GroupLabel>兴趣爱好（选填）</GroupLabel>
                 <input
                   type="text"
+                  aria-label="兴趣爱好（选填）"
                   value={interests}
                   onChange={(e) => setInterests(e.target.value)}
                   placeholder="比如：爱做饭、喜欢民谣、沉迷手账…"
@@ -319,34 +394,45 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                 <GroupLabel>雷点（选填）</GroupLabel>
                 <input
                   type="text"
+                  aria-label="雷点（选填）"
                   value={avoids}
                   onChange={(e) => setAvoids(e.target.value)}
                   placeholder="比如：怕虫子、社恐不想和人互动、不爱运动…"
                   className="w-full bg-card border-2 border-paper-edge/80 rounded-2xl px-4 py-2.5 text-[13.5px] text-ink focus:border-moss focus:outline-none placeholder:text-fog/50 mb-2"
                 />
+                </div>
               </div>
 
-              <div className="shrink-0 px-5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+              {guided ? <div className="preference-guide-actions">
+                <button disabled={saving} onClick={() => {
+                  clearTimeout(advanceTimer.current);
+                  if (guideStep === 0) setGuideStarted(false);
+                  else moveGuide(guideStep - 1);
+                }}>{guideStep === 0 ? '← 返回介绍' : '← 上一题'}</button>
+                <button className="preference-guide-next" disabled={saving} onClick={() => guideStep < 5 ? moveGuide(guideStep + 1) : void submit(pairVotes)}>{saving ? '正在保存…' : guideStep < 4 ? '留白，下一题 →' : guideStep === 4 ? '下一题 →' : '保存喜好，去写心愿 →'}</button>
+              </div> : <div className="shrink-0 px-5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                 <button
                   type="button"
+                  disabled={!pairs.length || saving}
                   onClick={() => setPage('pairs')}
                   className="w-full rounded-full py-3 text-[15px] text-card bg-moss hover:bg-moss-deep shadow-btn active:scale-[0.98] transition-all"
                 >
-                  继续：6 组时间对比
+                  {pairs.length ? `继续：${pairs.length} 组时间对比` : '时间对比加载中…'}
                 </button>
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() => submit(pairVotes)}
                   className="w-full mt-1.5 text-[12.5px] text-fog hover:text-ink py-1 transition-colors"
                 >
                   跳过对比，直接保存
                 </button>
-              </div>
+              </div>}
             </>
           ) : (
             <>
               {/* ── 第二页：时间爬坡·真实任务 PK，每页只比一对，选完即下一页 ── */}
-              <div className="flex-1 min-h-0 flex flex-col px-5">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-4 sm:px-5">
                 {/* 进度：当前时长档 + 第 x/N */}
                 <div className="shrink-0 flex items-center justify-between mb-1">
                   <span className="text-[12px] text-fog">
@@ -360,7 +446,7 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                     {pairIdx > 0 ? '‹ 上一档' : '‹ 返回'}
                   </button>
                 </div>
-                <div className="shrink-0 flex gap-1.5 mb-4" role="tablist" aria-label="选择时长档">
+                <div className="shrink-0 flex gap-1 mb-1 overflow-x-auto" role="tablist" aria-label="选择时长档">
                   {pairs.map((p, i) => (
                     <button
                       key={p.id}
@@ -369,7 +455,9 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                       aria-label={`跳到${p.when}`}
                       aria-selected={i === pairIdx}
                       onClick={() => setPairIdx(i)}
-                      className={`h-2 flex-1 rounded-full transition-all duration-200 active:scale-y-150 ${
+                      className="pair-tab h-11 flex-1 min-w-0 flex items-center justify-center"
+                    >
+                      <span className={`block w-full h-2 rounded-full transition-colors ${
                         pairVotes[p.id]
                           ? i === pairIdx
                             ? 'bg-moss ring-2 ring-moss/30'
@@ -377,8 +465,8 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                           : i === pairIdx
                             ? 'bg-orange ring-2 ring-orange/30'
                             : 'bg-paper-edge/60 hover:bg-fog-light'
-                      }`}
-                    />
+                      }`} />
+                    </button>
                   ))}
                 </div>
 
@@ -386,7 +474,7 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave }: Props
                   如果{pair.when}，<br />这两件事你更倾向于做哪个？
                 </p>
 
-                <div key={pair.id} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-2.5 animate-fade-in pb-1">
+                <div key={pair.id} className="shrink-0 flex flex-col gap-2.5 animate-fade-in pb-1">
                   <QuestTaskCard
                     {...pair.a}
                     active={pairVotes[pair.id] === 'A'}

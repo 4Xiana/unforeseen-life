@@ -1,6 +1,8 @@
 import type { QuestCategory, HandbookView } from './types';
+import { API_BASE } from './paths';
 
 const CLIENT_ID_KEY = 'xian.clientId';
+let volatileClientId: string | undefined;
 
 function uuid(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -19,11 +21,12 @@ export function getClientId(): string {
     }
     return id;
   } catch {
-    return uuid();
+    return volatileClientId ??= uuid();
   }
 }
 
 export function saveClientId(id: string) {
+  volatileClientId = id;
   try {
     localStorage.setItem(CLIENT_ID_KEY, id);
   } catch {
@@ -49,7 +52,7 @@ export const CATEGORY_ORDER: QuestCategory[] = ['explore', 'organize', 'create',
 
 export async function fetchHandbook(clientId: string): Promise<HandbookView | null> {
   try {
-    const res = await fetch(`/api/handbook?clientId=${encodeURIComponent(clientId)}`);
+    const res = await fetch(`${API_BASE}/handbook?clientId=${encodeURIComponent(clientId)}`);
     if (!res.ok) return null;
     return (await res.json()) as HandbookView;
   } catch {

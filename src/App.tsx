@@ -1,19 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useAgentSession } from './hooks/useAgentSession';
 import { ChatMessage } from './components/ChatMessage';
 import { ActivityCards } from './components/ActivityCards';
 import { TaskStep } from './components/TaskStep';
 import { CompletionScreen } from './components/CompletionScreen';
 import { HandbookView } from './components/HandbookView';
-import { RecordsView } from './components/RecordsView';
 import { QuestDrawer } from './components/QuestDrawer';
 import { LandingScreen } from './components/LandingScreen';
 import { ImmersiveCall } from './components/ImmersiveCall';
 import { DockSkeleton } from './components/DockSkeleton';
-import { VoiceButton } from './components/VoiceButton';
+import { VoiceButton, VoiceStatus } from './components/VoiceButton';
 import { useSpeechInput } from './hooks/useSpeechInput';
 import { useStepTimer } from './hooks/useStepTimer';
+import { appUrl } from './paths';
+import { GoalsView } from './components/GoalsView';
+import { PersonalLibrary, type LibraryTab } from './components/PersonalLibrary';
+import { InspirationView } from './components/InspirationView';
+import { PreferenceSheet } from './components/PreferenceSheet';
+import { AppOnboarding } from './components/AppOnboarding';
+import { useAppOnboarding, useFirstVisitGuide } from './hooks/useAppOnboarding';
 
 // 吱呀发出的内容块（文字 / 活动卡 / 步骤卡 / 骨架屏）：连续多块只显示一次头像
 function isXianKind(kind: string | undefined): boolean {
@@ -24,10 +30,10 @@ function isXianKind(kind: string | undefined): boolean {
 function NpcEnvelope({ children, showHeader = true }: { children: ReactNode; showHeader?: boolean }) {
   return (
     <div className="flex justify-start animate-slide-in-left">
-      <div className="w-full flex gap-2.5">
+      <div className="npc-envelope w-full flex gap-2.5">
         {showHeader ? (
           <img
-            src="/agent_avatar.png"
+            src={appUrl('agent_avatar.png')}
             alt="吱呀"
             width={32}
             height={32}
@@ -61,7 +67,10 @@ function useViewportHeight(): number | null {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () => setHeight(Math.round(vv.height - vv.offsetTop));
+    // Pinch zoom should magnify the page, not reflow the app into a smaller layout.
+    const update = () => {
+      if (vv.scale === 1) setHeight(Math.round(vv.height));
+    };
     update();
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
@@ -74,8 +83,14 @@ function useViewportHeight(): number | null {
 }
 
 export default function App() {
+  const onboarding = useAppOnboarding();
   const {
     started,
+    isRestoring,
+    retryRestore,
+    startNewSession,
+    startGoal,
+    sessionId,
     timeline,
     fsmState,
     isStreaming,
@@ -87,6 +102,7 @@ export default function App() {
     completed,
     handbook,
     reward,
+    goalNotice,
     quest,
     questHistory,
     proposedActivities,
@@ -104,17 +120,33 @@ export default function App() {
     profile,
     questPairs,
     saveUserProfile,
-  } = useAgentSession();
+  } = useAgentSession({ requestLocation: !onboarding.active });
+  useFirstVisitGuide(onboarding, !isRestoring && profile !== null && handbook !== null, started || !!profile?.onboarded || (handbook?.stats.total ?? 0) > 0);
+  const guideStepRef = useRef(onboarding.step);
+  guideStepRef.current = onboarding.step;
   const viewportHeight = useViewportHeight();
 
   const [inputValue, setInputValue] = useState('');
-  const [showHandbook, setShowHandbook] = useState(false);
-  const [showRecords, setShowRecords] = useState(false);
+  const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
+  const [showHome, setShowHome] = useState(false);
+  const openLibrary = (tab: LibraryTab = 'goals') => { refreshHandbook(); setLibraryTab(tab); };
+  const startFromHome = (text?: string) => {
+    setShowHome(false);
+    if (started) { if (text?.trim()) sendText(text.trim()); }
+    else start(text);
+  };
+  const startGoalFromLibrary: typeof startGoal = (...args) => { setShowHome(false); startGoal(...args); };
   const [showQuest, setShowQuest] = useState(false);
   // 沉浸通话模式：语音对话 + 字幕 + 独立卡片弹层
   const [immersive, setImmersive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatVoice = useSpeechInput(inputValue, setInputValue);
+  const openGuide = () => {
+    chatVoice.cancel();
+    setLibraryTab(null);
+    setImmersive(false);
+    onboarding.replay();
+  };
 
   // 最近一批活动卡 / 最近一张步骤卡的位置：只有"最新且处于对应阶段"的卡可交互
   let lastActivitiesIdx = -1;
@@ -192,7 +224,7 @@ export default function App() {
     }
   };
 
-  const isInputDisabled = isStreaming || isConnecting;
+  const isInputDisabled = isStreaming || isConnecting || isRestoring;
 
   const stateDotColor = {
     S0: 'var(--fog)',
@@ -211,25 +243,43 @@ export default function App() {
     ? `已开启定位：${geoPlace || '已获取位置'}，${geoWeather}。吱呀会参考天气和位置推荐支线`
     : '已开启定位，吱呀会参考你在哪儿、什么天气来推荐支线';
 
+  if (typeof onboarding.step === 'number') return (
+    <div className="app-shell h-[100dvh]" style={viewportHeight ? { height: viewportHeight, '--app-height': `${viewportHeight}px` } as CSSProperties : undefined}>
+      <AppOnboarding
+        step={onboarding.step}
+        onStep={onboarding.go}
+        onSkip={() => onboarding.close()}
+        onFinish={() => onboarding.close('done')}
+        returning={started}
+        startPending={isRestoring || isConnecting}
+        onStart={text => { onboarding.close('done'); start(text); }}
+        preferences={<PreferenceSheet embedded open guided onClose={() => onboarding.go(6)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onSaved={() => { if (guideStepRef.current === 5) onboarding.go(6); }} />}
+        goals={<GoalsView embedded guided recordOnly onClose={() => onboarding.go(7)} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} onConfirmed={() => { if (guideStepRef.current === 6) onboarding.go(7); }} />}
+      />
+    </div>
+  );
+
   return (
     <div
-      className="h-[100dvh] flex flex-col relative overflow-hidden notebook-page"
-      style={viewportHeight ? { height: viewportHeight } : undefined}
+      className="app-shell h-[100dvh] flex flex-col relative overflow-hidden notebook-page"
+      style={viewportHeight ? { height: viewportHeight, '--app-height': `${viewportHeight}px` } as CSSProperties : undefined}
     >
       {completed && (
         <CompletionScreen
           reward={reward}
+          goalNotice={goalNotice}
+          onViewGoals={() => { dismissCompletion(); openLibrary('goals'); }}
           totalCount={handbook?.stats.total ?? 0}
           onDismiss={dismissCompletion}
-          onViewHandbook={() => { dismissCompletion(); setShowHandbook(true); }}
+          onViewHandbook={() => { dismissCompletion(); openLibrary('handbook'); }}
         />
       )}
-      {showHandbook && handbook && (
-        <HandbookView view={handbook} onClose={() => setShowHandbook(false)} />
-      )}
-      {showRecords && handbook && (
-        <RecordsView view={handbook} onClose={() => setShowRecords(false)} />
-      )}
+      {libraryTab && <PersonalLibrary tab={libraryTab} onTabChange={setLibraryTab} onClose={() => setLibraryTab(null)} onOpenGuide={openGuide} needsPreferences={!profile?.onboarded} panels={guide => ({
+        inspiration: <InspirationView />,
+        preferences: <PreferenceSheet embedded open guided={guide.guidedPreferences} onSaved={guide.onPreferencesSaved} onClose={() => setLibraryTab(null)} initial={profile} pairs={questPairs} onSave={saveUserProfile} />,
+        goals: <GoalsView embedded guided={guide.guidedGoals} onGoalsLoaded={guide.onGoalsLoaded} onConfirmed={guide.onGoalConfirmed} onClose={() => setLibraryTab(null)} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} />,
+        handbook: handbook ? <HandbookView embedded view={handbook} onClose={() => setLibraryTab(null)} busy={isStreaming || isConnecting || isRestoring} onStartQuest={() => { setLibraryTab(null); setShowHome(false); if (!started) start('我有15分钟，想做一件轻松的小事'); }} /> : <div className="library-loading" role="status">还没能打开日常记录<button onClick={refreshHandbook}>重新加载</button></div>,
+      })} />}
       {showQuest && (
         <QuestDrawer
           fsmState={fsmState}
@@ -247,8 +297,13 @@ export default function App() {
         />
       )}
 
-      {!started ? (
-        <LandingScreen onStart={start} onOpenHandbook={() => { refreshHandbook(); setShowHandbook(true); }} profile={profile} pairs={questPairs} onSaveProfile={saveUserProfile} />
+      {!started && isRestoring ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center" role="status">
+          <p className="font-hand text-fog">{error || '正在打开你的支线记录…'}</p>
+          {error && <button className="stamp-badge min-h-[44px]" onClick={retryRestore}>重新连接</button>}
+        </div>
+      ) : !started || showHome ? (
+        <LandingScreen onStart={startFromHome} onResume={started ? () => setShowHome(false) : undefined} busy={isStreaming || isConnecting || isRestoring} onOpenLibrary={() => openLibrary()} onOpenGuide={openGuide} needsPreferences={!profile?.onboarded} />
       ) : (
       <div className="flex-1 flex flex-col min-h-0 animate-fade-in">
       {immersive ? (
@@ -261,7 +316,7 @@ export default function App() {
           proposedActivities={proposedActivities}
           stepTimer={stepTimer}
           onExit={() => setImmersive(false)}
-          onOpenHandbook={() => { refreshHandbook(); setShowHandbook(true); }}
+          onOpenHandbook={() => openLibrary('handbook')}
           onSendText={sendText}
           onSelectActivity={selectActivity}
           onRefreshActivities={() => sendText('换一批')}
@@ -271,20 +326,19 @@ export default function App() {
         />
       ) : (
       <>
-      <header className="shrink-0 z-10 relative">
-        <div className="px-5 pt-5 pb-3 relative">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-11 h-11 rounded-2xl bg-card border-2 border-ink text-moss flex items-center justify-center shadow-paper"
+      <header className="chat-header shrink-0 z-10 relative">
+        <div className="chat-header-inner px-5 pt-5 pb-3 relative">
+          <div className="chat-header-layout flex items-center justify-between">
+            <div className="chat-brand flex items-center gap-3">
+                <button type="button" aria-label="返回首页" title="返回首页" onClick={() => { chatVoice.cancel(); setShowHome(true); }}
+                  className="chat-home-button w-11 h-11 shrink-0 rounded-2xl bg-card border-2 border-ink text-moss flex items-center justify-center shadow-paper"
                   style={{ transform: 'rotate(-3deg)' }}>
-                  <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
+                  <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden>
                     <path d="M3 15L3.5 9L9 3L14.5 9L15 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M6 15V11C6 9.34315 7.34315 8 9 8C10.6569 8 12 9.34315 12 11V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
                     <circle cx="9" cy="6" r="0.8" fill="currentColor"/>
                   </svg>
-                </div>
-              </div>
+                </button>
               <div>
                 <h1 className="font-display text-ink text-[22px] leading-none">
                   支线任务
@@ -295,11 +349,10 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
               {geoSupported && geoStatus === 'granted' && (
                 <span
                   title={geoTitle}
-                  className="stamp-badge flex items-center gap-1.5 text-teal border-teal/40"
+                  className="chat-location stamp-badge flex items-center gap-1.5 text-teal border-teal/40"
                 >
                   <svg
                     width="12" height="12" viewBox="0 0 14 14" fill="none"
@@ -308,58 +361,53 @@ export default function App() {
                     <path d="M7 12.5C7 12.5 11.5 8.6 11.5 5.6C11.5 3.1 9.5 1.3 7 1.3C4.5 1.3 2.5 3.1 2.5 5.6C2.5 8.6 7 12.5 7 12.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
                     <circle cx="7" cy="5.5" r="1.7" stroke="currentColor" strokeWidth="1.3"/>
                   </svg>
-                  {geoLabel}
+                  <span className="truncate">{geoLabel}</span>
                 </span>
               )}
+            <nav aria-label="支线工具" className="chat-tools flex items-center gap-2">
+              <button onClick={() => openLibrary()} aria-label="我的手册" title="我的手册：喜好、心愿、日常记录与灵感收藏" className="stamp-badge text-moss-deep">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M12 5C9 3 5 3 3 4V20C5 19 9 19 12 21C15 19 19 19 21 20V4C19 3 15 3 12 5Z M12 5V21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button onClick={() => startNewSession()} disabled={isInputDisabled} aria-label="新一轮" className="stamp-badge disabled:opacity-40" title="保留已有记录，开始新的会话">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M20 8A8 8 0 1 0 20 16 M20 3V8H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
               {boardAvailable && (
                 <button
                   onClick={() => setShowQuest(true)}
-                  className={`stamp-badge transition-colors flex items-center justify-center gap-1.5 min-w-[96px] ${
+                  aria-label="任务进度"
+                  className={`stamp-badge chat-progress-tool transition-colors ${
                     boardLoading ? 'text-fog' : 'hover:text-moss-deep hover:border-moss/40'
                   }`}
-                  title="任务进度"
+                  title={`任务进度：${boardLabel}`}
                 >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M8 6H20 M8 12H20 M8 18H16 M3 5L4 6L6 4 M3 11L4 12L6 10 M3 17L4 18L6 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                   <span
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${boardLoading ? 'animate-pulse' : ''}`}
+                    aria-hidden
+                    className={`chat-progress-dot w-1.5 h-1.5 rounded-full ${boardLoading ? 'animate-pulse' : ''}`}
                     style={{ background: boardLoading ? 'var(--fog)' : stateDotColor }}
                   />
-                  <span className="tabular-nums">{boardLabel}</span>
+                  <span className="sr-only">{boardLabel}</span>
                 </button>
               )}
               <button
-                onClick={() => setShowHandbook(true)}
-                className="stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1"
-                title="我的支线手账"
-              >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="text-orange">
-                  <path d="M7 1L8.5 4.5L12 5L9.5 7.5L10 11L7 9.5L4 11L4.5 7.5L2 5L5.5 4.5L7 1Z" fill="currentColor" strokeLinejoin="round"/>
-                </svg>
-                手账{handbook && handbook.stats.total > 0 ? ` ${handbook.stats.total}` : ''}
-              </button>
-              <button
-                onClick={() => setShowRecords(true)}
-                className="stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1"
-                title="支线记录：每一步的证物"
-              >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="text-teal">
-                  <path d="M3 2.5H11V11.5H3V2.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-                  <path d="M5 5H9M5 7.5H9M5 10H7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-                </svg>
-                记录
-              </button>
-              <button
                 onClick={() => setImmersive(true)}
+                aria-label="沉浸"
                 className="stamp-badge hover:text-moss-deep hover:border-moss/40 transition-colors flex items-center gap-1"
                 title="沉浸通话模式：语音对话 + 字幕"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-moss">
+                <svg width="22" height="22" viewBox="0 0 16 16" fill="none" className="text-moss" aria-hidden>
                   <path d="M4 7V9C4 11.2 5.8 13 8 13C10.2 13 12 11.2 12 9V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                   <rect x="2.5" y="3" width="3" height="4.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
                   <rect x="10.5" y="3" width="3" height="4.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
                 </svg>
-                沉浸
               </button>
-            </div>
+            </nav>
           </div>
         </div>
 
@@ -374,6 +422,7 @@ export default function App() {
               <path d="M6 3.5V6.5M6 8V8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
             </svg>
             {error}
+            <button onClick={retryRestore} className="stamp-badge" disabled={isStreaming}>重新连接</button>
           </p>
         </div>
       )}
@@ -390,7 +439,8 @@ export default function App() {
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto px-5 py-4" id="message-scroll-area">
+          {isRestoring && !error && <p role="status" className="px-5 py-2 text-sm text-fog">上次的回复还在继续，正在同步进度…</p>}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4" id="message-scroll-area">
             <div className="max-w-lg mx-auto space-y-4">
               {timeline.map((item, idx) => {
                 const prev = timeline[idx - 1];
@@ -497,7 +547,7 @@ export default function App() {
           </div>
 
           <div className="shrink-0 z-20 relative">
-            <div className="px-5 py-3 bg-paper">
+            <div className="chat-composer px-3 py-2 sm:px-5 sm:py-3 bg-paper">
               <div className="max-w-lg mx-auto">
                 {fsmState === 'S0' && !isStreaming && timeline.some(it => it.kind === 'npc') && (
                   <div className="flex justify-center pb-2">
@@ -515,6 +565,7 @@ export default function App() {
                 <div className="bg-card border border-paper-edge/80 rounded-full shadow-paper-md p-1.5 pl-2 flex gap-1 items-end">
                   <input
                     type="text"
+                    aria-label="和吱呀说说你的想法"
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -530,6 +581,7 @@ export default function App() {
                   {chatVoice.supported && (
                     <VoiceButton
                       listening={chatVoice.listening}
+                      phase={chatVoice.phase}
                       error={chatVoice.error}
                       onToggle={chatVoice.toggle}
                       disabled={isInputDisabled}
@@ -537,6 +589,7 @@ export default function App() {
                   )}
                   <button
                     onClick={handleSend}
+                    aria-label="发送消息"
                     disabled={isInputDisabled || !inputValue.trim()}
                     className="p-3 bg-moss text-ink rounded-full hover:bg-moss-deep hover:text-card transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-btn"
                   >
@@ -546,7 +599,8 @@ export default function App() {
                     </svg>
                   </button>
                 </div>
-                <p className="text-center font-hand text-fog/60 text-[13px] mt-2">
+                <VoiceStatus phase={chatVoice.phase} error={chatVoice.error} />
+                <p className="composer-caption text-center font-hand text-fog/60 text-[13px] mt-2">
                   unforeseen life · 支线任务
                 </p>
               </div>

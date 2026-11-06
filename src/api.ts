@@ -1,13 +1,23 @@
 import type { SSEEvent, UserProfile, SaveProfileInput, QuestPair } from './types';
-
-const API_BASE = '/api';
+import { API_BASE } from './paths';
+import { getClientId } from './handbook';
+import type { RestoredSession } from './session-restore';
 
 type EventCallback = (event: SSEEvent) => void;
+
+export async function fetchSavedSession(clientId: string, sessionId?: string, signal?: AbortSignal): Promise<RestoredSession | null> {
+  const res = await fetch(`${API_BASE}/session/${sessionId ? encodeURIComponent(sessionId) : 'active'}`, {
+    headers: { 'X-Client-Id': clientId }, cache: 'no-store', signal,
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('暂时无法恢复记录，请检查网络后重试。');
+  return res.json();
+}
 
 export async function createSession(clientId: string, signal?: AbortSignal): Promise<{ sessionId: string; clientId: string }> {
   const res = await fetch(`${API_BASE}/session`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Client-Id': getClientId(), 'X-Request-Id': crypto.randomUUID() },
     body: JSON.stringify({ clientId }),
     signal,
   });
@@ -23,6 +33,7 @@ export interface GeoPoint {
 }
 
 export interface SendMessageOptions {
+  goalId?: string;
   sessionId: string;
   type: 'text' | 'select_activity' | 'submit_text' | 'abandon';
   text?: string;
@@ -99,6 +110,7 @@ export async function sendMessage(opts: SendMessageOptions): Promise<void> {
   const { sessionId, type, text, activityId, geo, elapsedSeconds, onEvent, signal } = opts;
 
   const body: Record<string, unknown> = { type };
+  if (opts.goalId) body.goalId = opts.goalId;
   if (text !== undefined) body.text = text;
   if (activityId !== undefined) body.activityId = activityId;
   if (geo) body.geo = geo;
@@ -106,7 +118,7 @@ export async function sendMessage(opts: SendMessageOptions): Promise<void> {
 
   const res = await fetch(`${API_BASE}/session/${sessionId}/message`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Client-Id': getClientId(), 'X-Request-Id': crypto.randomUUID() },
     body: JSON.stringify(body),
     signal,
   });
@@ -170,6 +182,7 @@ export async function sendPhoto(
 
   const res = await fetch(`${API_BASE}/session/${sessionId}/photo`, {
     method: 'POST',
+    headers: { 'X-Client-Id': getClientId(), 'X-Request-Id': crypto.randomUUID() },
     body: formData,
     signal,
   });

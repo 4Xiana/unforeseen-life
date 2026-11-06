@@ -15,6 +15,7 @@ export interface ActivityStep {
 }
 
 export interface ActivityPlan {
+  journey?: import('../server/goals-types').Journey;
   id: string;
   title: string;
   hook: string;
@@ -25,6 +26,7 @@ export interface ActivityPlan {
 }
 
 export interface PublishedStep {
+  journey?: import('../server/goals-types').Journey;
   index: number;
   instruction: string;
   hint?: string;

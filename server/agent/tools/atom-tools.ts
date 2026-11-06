@@ -17,6 +17,9 @@ import type { EvidenceReview } from '../review/evidence-reviewer.js';
 export type AtomTool = ReturnType<typeof tool>;
 
 export interface ToolContext {
+  mixActivities?: (activities: ActivityPlan[]) => ActivityPlan[];
+  claimActivity?: (activity: ActivityPlan) => void;
+  validateCompletion?: (activity: ActivityPlan) => void;
   memory: WorkingMemory;
   fsm: StateMachine;
   emit: (event: Record<string, unknown>) => void;
@@ -134,6 +137,10 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
     }),
     execute: async (args) => {
       // 最高权威：证物轮验收员已判 reject，则无论台词说没说"完成"都不许毕业
+      if (args.target_state === 'S3' && memory.selected?.journey) {
+        try { ctx.validateCompletion?.(memory.selected); }
+        catch (err) { return JSON.stringify({ success: false, error: String(err), hint: '留在当前步骤，补交并验收证物后再完成。' }); }
+      }
       if (
         args.target_state === 'S3' &&
         isContentProofTurn && isContentProofTurn() &&
@@ -216,7 +223,9 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           hint: '玩家刚发了言（补充偏好/点跳过/换一批），先用一句话接住 TA 说的内容，同一句自然引向支线卡片（如"不想花钱？这几件都不花钱——支线任务来了，挑一个"），然后再重新调用 propose_activities。全轮就这一句，不要分两段、不要复述条件。',
         });
       }
-      const activities = args.activities as ActivityPlan[];
+      let activities: ActivityPlan[];
+      try { activities = ctx.mixActivities?.(args.activities as ActivityPlan[]) ?? args.activities as ActivityPlan[]; }
+      catch (err) { return JSON.stringify({ success: false, error: String(err), hint: '向玩家说明实际原因，不要假装已经出卡。' }); }
       memory.setProposedActivities(activities);
       emit({ type: 'activities_proposed', activities });
       return JSON.stringify({
@@ -252,6 +261,8 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           availableActivities: available,
         });
       }
+      try { ctx.claimActivity?.(act); }
+      catch (err) { return JSON.stringify({ success: false, error: String(err) }); }
       memory.setSelectedActivity(act);
       return JSON.stringify({
         success: true,
@@ -288,6 +299,10 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
         return JSON.stringify({ success: false, error: '没有选中的活动，无法设计步骤' });
       }
       const existingSteps = selected.steps || [];
+      if (selected.journey && existingSteps.length) {
+        const next = existingSteps.findIndex(s => !s.submittedEvidence);
+        return JSON.stringify({ success: true, totalSteps: existingSteps.length, steps: existingSteps, hint: next < 0 ? '全部证物已保存，可以申请完成。' : `长程章节步骤已经定稿，不得替换；直接 publish_step(step_index=${next})，使用对应步骤原文。` });
+      }
       if (existingSteps.length > 0) {
         const nextStepIndex = memory.stepIndex + 1;
         if (nextStepIndex >= existingSteps.length) {
@@ -419,10 +434,20 @@ export function createAtomTools(ctx: ToolContext): AtomTool[] {
           hint: `验收通过后直接 publish_step(step_index=${nextStepIndex}) 发下一步，不要再调 design_activity_steps（步骤早已设计好）；证物不达标（照片和这一步要做的事对不上、或图说答案答非所问）就别发卡，用文字具体指出差在哪、让玩家重交。`,
         });
       }
+      if (selected.journey) {
+        const firstMissing = plannedSteps.findIndex(s => !s.submittedEvidence);
+        if (args.step_index !== firstMissing) return JSON.stringify({ success: false, error: '长程章节需要依次完成已定稿的证物步骤', nextStepIndex: firstMissing });
+        const canonical = plannedSteps[args.step_index];
+        args.instruction = canonical.instruction;
+        args.hint = canonical.hint;
+        args.submission_type = canonical.submissionType;
+        args.proof_prompt = canonical.proofPrompt!;
+      }
       memory.setStepIndex(args.step_index);
       emit({
         type: 'step_published',
         step: {
+          journey: selected.journey,
           index: args.step_index,
           instruction: args.instruction,
           hint: args.hint,

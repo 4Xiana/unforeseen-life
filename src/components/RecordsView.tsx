@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { HandbookView, QuestRecord, StepDetail } from '../types';
 import { CATEGORY_META, formatDate } from '../handbook';
+import { appUrl } from '../paths';
 
 interface Props {
   view: HandbookView;
@@ -19,7 +20,7 @@ function EvidenceBlock({ step }: { step: StepDetail }) {
       <div className="space-y-1.5">
         {ev.photoUrl && (
           <img
-            src={ev.photoUrl}
+            src={appUrl(ev.photoUrl)}
             alt="现场证物"
             className="w-full rounded-xl border border-fog-light/60 object-cover max-h-56"
             loading="lazy"
@@ -42,7 +43,7 @@ function EvidenceBlock({ step }: { step: StepDetail }) {
   );
 }
 
-function QuestCard({ record }: { record: QuestRecord }) {
+export function QuestRecordCard({ record }: { record: QuestRecord }) {
   const [open, setOpen] = useState(false);
   const meta = CATEGORY_META[record.category];
   const hasDetails = !!record.stepDetails?.length;
@@ -54,11 +55,12 @@ function QuestCard({ record }: { record: QuestRecord }) {
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-paper-2/40 transition-colors"
+        aria-expanded={open}
+        className="w-full text-left px-3 sm:px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-paper-2/40 transition-colors"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-display text-[15px] text-ink leading-tight truncate">「{record.title}」</span>
+            <span className="font-display text-[15px] text-ink leading-snug">「{record.title}」</span>
             <span
               className="shrink-0 font-hand text-[11px] px-1.5 py-0.5 rounded-full"
               style={{ color: meta.color, background: `${meta.color}14` }}
@@ -82,7 +84,7 @@ function QuestCard({ record }: { record: QuestRecord }) {
       </button>
 
       {open && hasDetails && (
-        <div className="px-4 pb-4 space-y-3 border-t border-fog-light/40 pt-3">
+        <div className="px-3 sm:px-4 pb-4 space-y-3 border-t border-fog-light/40 pt-3">
           {record.stepDetails!.map((step, i) => (
             <div key={i} className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -101,6 +103,7 @@ function QuestCard({ record }: { record: QuestRecord }) {
           ))}
         </div>
       )}
+      {open && !hasDetails && record.evidence && <p className="px-4 pb-4 text-[13px] text-ink-2 whitespace-pre-wrap break-words">{record.evidence}</p>}
     </div>
   );
 }
@@ -109,15 +112,15 @@ export function RecordsView({ view, onClose }: Props) {
   const empty = view.quests.length === 0;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="viewport-overlay journal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
       style={{ background: 'rgba(45,42,38,0.35)', backdropFilter: 'blur(4px)' }}
     >
-      <div className="relative w-full max-w-md max-h-[86vh] flex flex-col animate-slide-up">
+      <div role="dialog" aria-modal="true" aria-label="支线记录" className="journal-shell relative w-full max-w-md max-h-[86dvh] flex flex-col animate-slide-up">
         <div className="tape tape-top-left" style={{ width: '60px', height: '18px', background: 'rgba(114,148,81,0.32)' }} />
         <div className="tape tape-top-right" style={{ width: '60px', height: '18px', background: 'rgba(240,160,62,0.28)' }} />
 
-        <div className="bg-paper border border-ink/[0.07] rounded-[28px] shadow-paper-lg flex flex-col min-h-0">
-          <div className="px-6 pt-7 pb-4 flex items-start justify-between shrink-0">
+        <div className="journal-panel bg-paper border border-ink/[0.07] rounded-[28px] shadow-paper-lg flex flex-col min-h-0">
+          <div className="panel-header px-6 pt-7 pb-4 flex items-start justify-between gap-3 shrink-0">
             <div>
               <h2 className="font-display text-ink text-[24px] leading-none">支线记录</h2>
               <p className="font-hand text-fog text-[14px] mt-2">
@@ -137,7 +140,7 @@ export function RecordsView({ view, onClose }: Props) {
             </button>
           </div>
 
-          <div className="px-6 pb-6 overflow-y-auto min-h-0">
+          <div className="panel-content px-6 pb-6 overflow-y-auto min-h-0">
             {empty ? (
               <div className="py-12 text-center">
                 <div className="mx-auto w-20 h-20 rounded-full border-2 border-dashed border-fog-light flex items-center justify-center mb-4 text-fog-light">
@@ -153,7 +156,7 @@ export function RecordsView({ view, onClose }: Props) {
             ) : (
               <div className="space-y-2.5">
                 {view.quests.map((q) => (
-                  <QuestCard key={q.id} record={q} />
+                  <QuestRecordCard key={q.id} record={q} />
                 ))}
               </div>
             )}

@@ -8,8 +8,14 @@
     "dev:web": "vite",
     "dev:server": "cd server && npx tsx watch index.ts",
     "build": "tsc -b && vite build",
+    "build:deploy": "tsc -b && vite build --base=/unforeseen-life/",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "test:speech": "npm --prefix server run test:speech",
+    "test:persistence": "npm --prefix server run build && server/node_modules/.bin/tsx --test tests/sessionPersistence.test.ts",
+    "test:goals": "server/node_modules/.bin/tsx --test tests/longTermGoals.test.ts",
+    "preview": "vite preview --base=/unforeseen-life/",
+    "preview:backend": "PORT=5184 npm --prefix server run dev",
+    "preview:local": "npm run build:deploy && concurrently --kill-others -n server,web -c cyan,yellow \"npm:preview:backend\" \"npm:preview\""
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -28,6 +28,8 @@ export interface ActivityStep {
 }
 
 export interface ActivityPlan {
+  inspiration?: import('../../inspiration-types.js').InspirationTask & { sourceUrl?: string };
+  journey?: import('../../goals-types.js').Journey;
   id: string;
   title: string;
   hook: string;
@@ -59,6 +61,7 @@ export interface TranscriptEntry {
 }
 
 export interface WorkingMemorySnapshot {
+  requestedGoalId?: string;
   fsmState: FSMState;
   collectedInfo: CollectedInfo;
   proposedActivities: ActivityPlan[];

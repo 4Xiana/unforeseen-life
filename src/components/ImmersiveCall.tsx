@@ -2,8 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TimelineItem, FSMState, ActivityPlan, QuestProgress, ArchivedQuest } from '../types';
 import { useTTS } from '../hooks/useTTS';
 import { useSpeechInput } from '../hooks/useSpeechInput';
+import { useSpeechHold } from '../hooks/useSpeechHold';
+import { VoiceStatus } from './VoiceButton';
 import type { StepTimerApi } from '../hooks/useStepTimer';
 import { CallCardSheet } from './CallCardSheet';
+import { appUrl } from '../paths';
 
 type TextItem = Extract<TimelineItem, { kind: 'user' | 'npc' }>;
 
@@ -40,6 +43,7 @@ export function ImmersiveCall(props: Props) {
   // 提交最终识别文本：用 ref 规避「hook 回调引用尚未声明的 callVoice」的顺序问题
   const commitRef = useRef<(text: string) => void>(() => {});
   const callVoice = useSpeechInput(voiceText, setVoiceText, t => commitRef.current(t));
+  const hold = useSpeechHold({ ...callVoice, begin: () => { tts.cancel(); tts.unlock(); callVoice.begin(); } }, !callVoice.supported || isStreaming);
   commitRef.current = (text: string) => {
     callVoice.reset();
     setVoiceText('');
@@ -64,7 +68,7 @@ export function ImmersiveCall(props: Props) {
         break;
       }
     }
-  }, [isStreaming, timeline, muted, tts]);
+  }, [isStreaming, timeline, muted, tts.cancel, tts.feed]);
 
   // 进入选支线 / 做步骤阶段：自动拉出卡片弹层（非阻断，可关可重开）
   useEffect(() => {
@@ -75,21 +79,11 @@ export function ImmersiveCall(props: Props) {
   useEffect(() => {
     return () => {
       tts.cancel();
+      spokenIdRef.current = null;
       callVoice.reset();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const startTalk = useCallback(() => {
-    if (!callVoice.supported || isStreaming) return;
-    tts.cancel();
-    setVoiceText('');
-    callVoice.begin();
-  }, [callVoice, isStreaming, tts]);
-
-  const endTalk = useCallback(() => {
-    callVoice.end();
-  }, [callVoice]);
 
   const toggleMute = useCallback(() => {
     setMuted(m => {
@@ -109,6 +103,8 @@ export function ImmersiveCall(props: Props) {
     ? { label: '聆听中', dot: 'bg-orange' }
     : tts.speaking
       ? { label: '吱呀中', dot: 'bg-moss' }
+      : tts.loading
+        ? { label: '准备声音中', dot: 'bg-moss animate-pulse' }
       : isStreaming
         ? { label: '思考中', dot: 'bg-fog animate-pulse' }
         : { label: '待命中', dot: 'bg-fog-light' };
@@ -124,9 +120,9 @@ export function ImmersiveCall(props: Props) {
   const active = listeningNow || tts.speaking;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
+    <div className="immersive-screen flex-1 flex flex-col min-h-0 relative">
       {/* 顶部：退出 / 标题 / 手账 */}
-      <header className="shrink-0 z-10">
+      <header className="immersive-header shrink-0 z-10">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <button
             onClick={onExit}
@@ -147,20 +143,20 @@ export function ImmersiveCall(props: Props) {
           <button
             onClick={onOpenHandbook}
             className="flex items-center gap-1 text-[13px] font-hand text-fog hover:text-orange transition-colors px-2 py-1"
-            title="支线手账"
+            title="日常记录"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <path d="M7 1L8.5 4.5L12 5L9.5 7.5L10 11L7 9.5L4 11L4.5 7.5L2 5L5.5 4.5L7 1Z" fill="currentColor" strokeLinejoin="round"/>
             </svg>
-            手账
+            日常记录
           </button>
         </div>
         <div className="h-px bg-fog-light/50 mx-4"/>
       </header>
 
       {/* 中部：大头像 + 呼吸环 + 状态 */}
-      <div className="shrink-0 flex flex-col items-center pt-8 pb-4">
-        <div className="relative w-[120px] h-[120px]">
+      <div className="immersive-hero shrink-0 flex flex-col items-center pt-8 pb-4">
+        <div className="immersive-avatar relative w-[120px] h-[120px]">
           {active && (
             <span
               className={`absolute inset-0 rounded-full animate-ping opacity-20 ${listeningNow ? 'bg-orange' : 'bg-moss'}`}
@@ -170,7 +166,7 @@ export function ImmersiveCall(props: Props) {
             className={`absolute inset-0 rounded-full transition-transform duration-300 ${active ? 'scale-105' : 'scale-100'}`}
           >
             <img
-              src="/agent_avatar.png"
+              src={appUrl('agent_avatar.png')}
               alt="吱呀"
               width={120}
               height={120}
@@ -182,10 +178,15 @@ export function ImmersiveCall(props: Props) {
           <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
           <p className="font-hand text-[15px] text-ink-2 leading-none">{status.label}</p>
         </div>
+        {!muted && <button className="mt-3 px-4 min-h-[44px] rounded-full border border-moss/30 text-moss-deep text-[12px] font-hand" disabled={tts.loading || tts.speaking || callVoice.active || isStreaming} onClick={() => {
+          tts.unlock();
+          if (tts.error) tts.retry();
+          else tts.feed('你好呀，我是吱呀。生活有主线，快乐在支线。');
+        }}>{tts.error || '听听吱呀的新声音'}</button>}
       </div>
 
       {/* 字幕区 */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
+      <div className="immersive-captions flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3">
         <div className="max-w-md mx-auto flex flex-col justify-end gap-2.5 min-h-full">
           {recent.map((it, i) => {
             const isLatest = !listeningNow && i === recent.length - 1;
@@ -204,7 +205,7 @@ export function ImmersiveCall(props: Props) {
               </div>
             );
           })}
-          {listeningNow && (
+          {(callVoice.active || voiceText.trim()) && (
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] font-hand leading-none text-orange">我</span>
               <p className="text-[15px] leading-relaxed text-ink font-medium">
@@ -217,21 +218,21 @@ export function ImmersiveCall(props: Props) {
 
       {/* 支线药丸 */}
       {boardAvailable && (
-        <div className="shrink-0 flex justify-center pb-2">
+        <div className="shrink-0 flex justify-center px-4 pb-2">
           <button
             onClick={() => setCardOpen(true)}
-            className="flex items-center gap-1.5 text-[12.5px] font-hand text-moss-deep bg-moss/[10%] border border-moss/30 hover:bg-moss/20 px-3.5 py-1.5 rounded-full transition-colors"
+            className="max-w-full flex items-center gap-1.5 text-[12.5px] font-hand text-moss-deep bg-moss/[10%] border border-moss/30 hover:bg-moss/20 px-3.5 py-1.5 rounded-full transition-colors"
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
               <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/>
             </svg>
-            {pillLabel}
+            <span className="min-w-0 truncate">{pillLabel}</span>
           </button>
         </div>
       )}
 
       {/* 底部控制条：静音 / 说话 / 挂断 */}
-      <div className="shrink-0 z-20 px-6 pb-7 pt-1">
+      <div className="immersive-controls shrink-0 z-20 px-6 pb-7 pt-1">
         <div className="flex items-center justify-between max-w-xs mx-auto">
           <button
             onClick={toggleMute}
@@ -255,10 +256,7 @@ export function ImmersiveCall(props: Props) {
           </button>
 
           <button
-            onPointerDown={startTalk}
-            onPointerUp={endTalk}
-            onPointerLeave={endTalk}
-            onPointerCancel={endTalk}
+            {...hold.handlers}
             disabled={!callVoice.supported || isStreaming}
             aria-label="按住说话"
             className="w-20 h-20 rounded-full bg-moss text-card shadow-btn flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 disabled:cursor-not-allowed touch-none select-none"
@@ -293,9 +291,12 @@ export function ImmersiveCall(props: Props) {
         <p className="text-center text-[12px] text-fog mt-3 font-hand">
           {callVoice.supported ? '按住大圆钮说话，松开就发给吱呀' : '当前浏览器不支持语音识别，可看字幕 / 返回对话'}
         </p>
-        {callVoice.error && (
-          <p className="text-center text-[12px] text-coral mt-1">{callVoice.error}</p>
+        {callVoice.supported && (
+          <button type="button" onClick={hold.toggle} disabled={isStreaming || callVoice.phase === 'stopping'} className="block mx-auto rounded-full px-3 py-2 text-[13px] text-moss-deep disabled:opacity-40">
+            {callVoice.active ? '结束并发送' : '也可以点击录音'}
+          </button>
         )}
+        <VoiceStatus phase={callVoice.phase} error={callVoice.error} />
       </div>
 
       <CallCardSheet

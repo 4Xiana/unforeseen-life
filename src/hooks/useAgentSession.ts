@@ -1,11 +1,18 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, fetchQuestPairs } from '../api';
+import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, fetchQuestPairs, fetchSavedSession } from '../api';
+import { restoreSessionView, type RestoredSession } from '../session-restore';
 import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo, UserProfile, SaveProfileInput, QuestPair } from '../types';
 import { getClientId, saveClientId, fetchHandbook } from '../handbook';
 import { useGeolocation, type GeoCoords } from './useGeolocation';
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
+}
+function savedActiveSession(): string | undefined {
+  try { return localStorage.getItem('xian-active-session') || undefined; } catch { return undefined; }
+}
+function rememberActiveSession(id: string) {
+  try { localStorage.setItem('xian-active-session', id); } catch { /* storage unavailable */ }
 }
 
 // 与后端"换一批"意图识别对齐：玩家明确表达重刷时，立即乐观渲染活动骨架屏
@@ -16,9 +23,18 @@ export interface QuestReward {
   category: QuestCategory;
   newBadges: BadgeState[];
 }
+export interface GoalNotice {
+  title: string;
+  completed: number;
+  total: number;
+  rewards: string[];
+}
 
-export function useAgentSession() {
+export function useAgentSession({ requestLocation = true }: { requestLocation?: boolean } = {}) {
+  const restoreSessionIdRef = useRef<string | undefined>(savedActiveSession());
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(true);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [fsmState, setFsmState] = useState<FSMState>('S0');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -39,6 +55,7 @@ export function useAgentSession() {
   // Pair-wise 真实任务对：第二页快速对比用
   const [questPairs, setQuestPairs] = useState<QuestPair[]>([]);
   const [reward, setReward] = useState<QuestReward | null>(null);
+  const [goalNotice, setGoalNotice] = useState<GoalNotice | null>(null);
   // 当前支线任务进度：步骤卡在瀑布流里会被刷上去，抽屉靠这份聚合数据常驻展示
   const [quest, setQuest] = useState<QuestProgress | null>(null);
   // 已经走完/放弃的支线：抽屉时间轴里逐条累积，挑选→进行→完成全程可回溯
@@ -55,11 +72,10 @@ export function useAgentSession() {
   const geoCoordsRef = useRef<GeoCoords | null>(null);
   useEffect(() => { geoCoordsRef.current = geo.coords; }, [geo.coords]);
 
-  // 一进应用（落点页）就请求定位授权：开了之后 header 才出现定位徽章，
-  // 授权结果不阻塞开场，拿到坐标后从下一条消息开始随请求上行
+  // 真正开始支线后再请求定位，避免权限弹窗打断首次引导。
   useEffect(() => {
-    geo.request();
-  }, [geo.request]);
+    if (started && requestLocation) geo.request();
+  }, [geo.request, started, requestLocation]);
 
   // 落点页加载长期喜好档案（用本地稳定 clientId，无需先开 session）：
   // 决定右上角入口是否显示"首次"红点
@@ -70,6 +86,9 @@ export function useAgentSession() {
       .catch(() => {});
     fetchQuestPairs()
       .then((q) => { if (alive && q) setQuestPairs(q); })
+      .catch(() => {});
+    fetchHandbook(clientIdRef.current)
+      .then((view) => { if (alive && view) setHandbook(view); })
       .catch(() => {});
     return () => { alive = false; };
   }, []);
@@ -87,6 +106,7 @@ export function useAgentSession() {
   const archivedQuestRef = useRef<string>('');
   // 当前支线的唯一 key：新支线 step0 发布时换新；归档记录据此判重
   const questKeyRef = useRef<string>('');
+  const newQuestRef = useRef(false);
   // 刚 push 进对话流的照片 item id：收到后端 photo_saved 后把 object URL 换成持久化 URL
   const pendingPhotoItemIdRef = useRef<string | null>(null);
 
@@ -106,8 +126,8 @@ export function useAgentSession() {
     pushItem({ id: uid(), kind: 'user', content, timestamp: Date.now() });
   }, [pushItem]);
 
-  const start = useCallback((initialText?: string) => {
-    if (startedRef.current) return;
+  const start = useCallback((initialText?: string, goalId?: string) => {
+    if (startedRef.current || isRestoring) return;
     startedRef.current = true;
     setStarted(true);
 
@@ -131,6 +151,7 @@ export function useAgentSession() {
         clientIdRef.current = cid;
         saveClientId(cid);
         setSessionId(id);
+        rememberActiveSession(id);
         setIsConnecting(false);
         setIsStreaming(true);
         fetchHandbook(cid).then(v => { if (!cancelled && v) setHandbook(v); }).catch(() => {});
@@ -139,6 +160,7 @@ export function useAgentSession() {
           sessionId: id,
           type: 'text',
           text: kickoffMessage,
+          goalId,
           geo: geoCoordsRef.current ?? undefined,
           onEvent: (event) => handleEventRef.current(event),
           signal: ac.signal,
@@ -156,7 +178,7 @@ export function useAgentSession() {
     }
 
     init();
-  }, []);
+  }, [isRestoring]);
 
   useEffect(() => {
     return () => {
@@ -264,6 +286,7 @@ export function useAgentSession() {
           }
         }
         if (to === 'S2') {
+          newQuestRef.current = true;
           // 第一步卡片待生成：同样等引导文字后再出骨架屏；旧卡片留在瀑布流里
           setUiPending('step');
           setUiGuided(false);
@@ -300,7 +323,10 @@ export function useAgentSession() {
         const total = event.total as number;
         const activityTitle = event.activityTitle as string | undefined;
         // 新支线发车（step0）：换一把支线 key，归档判重以此为准
-        if (publishedStep.index === 0) questKeyRef.current = `q${Date.now()}`;
+        const previousQuest = questRef.current;
+        const fresh = newQuestRef.current || !previousQuest;
+        if (fresh) questKeyRef.current = `q${Date.now()}-${uid()}`;
+        newQuestRef.current = false;
         pushItem({
           id: uid(),
           kind: 'step',
@@ -308,20 +334,19 @@ export function useAgentSession() {
           total,
           timestamp: Date.now(),
         });
-        // 聚合当前支线进度：step 0 = 新支线重新记账；同号重发去重；标题以事件为准
-        setQuest(prev => {
-          const fresh = publishedStep.index === 0 || !prev;
-          const steps = fresh
-            ? [publishedStep]
-            : [...prev.steps.filter(s => s.index !== publishedStep.index), publishedStep]
-                .sort((a, b) => a.index - b.index);
-          return {
-            id: fresh ? questKeyRef.current : prev.id,
-            title: activityTitle || prev?.title || '当前支线',
-            total: total || prev?.total || steps.length,
-            steps,
-          };
-        });
+        // 新任务独立记账；证物被退回后同号重发只更新步骤。
+        const steps = fresh
+          ? [publishedStep]
+          : [...previousQuest.steps.filter(s => s.index !== publishedStep.index), publishedStep]
+              .sort((a, b) => a.index - b.index);
+        const nextQuest = {
+          id: fresh ? questKeyRef.current : previousQuest.id,
+          title: activityTitle || previousQuest?.title || '当前支线',
+          total: total || previousQuest?.total || steps.length,
+          steps,
+        };
+        questRef.current = nextQuest;
+        setQuest(nextQuest);
         setSteppingText(null);
         setUiPending(null);
         setUiOptimistic(null);
@@ -349,6 +374,14 @@ export function useAgentSession() {
         break;
       }
 
+      case 'goal_updated': {
+        const g = event.goal as import('../../server/goals-types').Goal | undefined;
+        if (g) {
+          const last = g.records[g.records.length - 1];
+          setGoalNotice({ title: g.plan.title, completed: g.records.length, total: g.plan.chapters.length, rewards: g.rewards.filter(r => r.at === last?.at).map(r => r.name) });
+        }
+        break;
+      }
       case 'turn_complete': {
         finalizeStreamingMessage();
         setIsStreaming(false);
@@ -396,6 +429,99 @@ export function useAgentSession() {
     handleEventRef.current = handleEvent;
   }, [handleEvent]);
 
+  const applySavedSession = useCallback((saved: RestoredSession) => {
+    setGoalNotice(null);
+    rememberActiveSession(saved.sessionId);
+    const view = restoreSessionView(saved);
+    startedRef.current = true;
+    setStarted(true);
+    setSessionId(saved.sessionId);
+    setTimeline(view.timeline);
+    timelineRef.current = view.timeline;
+    setFsmState(view.fsmState);
+    setQuest(view.quest);
+    questRef.current = view.quest;
+    newQuestRef.current = false;
+    questKeyRef.current = view.quest?.id || '';
+    archivedQuestRef.current = view.questHistory.some(q => q.id === view.quest?.id) ? view.quest?.id || '' : '';
+    setQuestHistory(view.questHistory);
+    setProposedActivities(view.proposedActivities);
+    setEnvInfo(view.envInfo);
+    setCompleted(false);
+    setReward(null);
+    setUiPending(null);
+    setUiOptimistic(null);
+    setUiGuided(false);
+    streamingItemIdRef.current = null;
+    streamingTextRef.current = '';
+    setIsThinking(false);
+    setSteppingText(null);
+    setIsStreaming(saved.status === 'processing');
+    setError(saved.status === 'interrupted' ? '上次回复中断了，已恢复保存的内容。可以继续当前任务，或告诉吱呀“继续”。' : null);
+  }, []);
+
+  // 初次打开只读服务器记录；处理中的回合用定时刷新等待，不重新发起 Agent。
+  useEffect(() => {
+    const ac = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let savedId = restoreSessionIdRef.current;
+    setIsRestoring(true);
+    async function restore() {
+      try {
+        let saved = await fetchSavedSession(clientIdRef.current, savedId, ac.signal);
+        if (!saved && savedId) saved = await fetchSavedSession(clientIdRef.current, undefined, ac.signal);
+        if (ac.signal.aborted) return;
+        if (saved) {
+          savedId = saved.sessionId;
+          applySavedSession(saved);
+          if (saved.status === 'processing') {
+            timer = setTimeout(restore, 1500);
+            return;
+          }
+          fetchHandbook(clientIdRef.current).then(v => { if (!ac.signal.aborted && v) setHandbook(v); }).catch(() => {});
+        }
+        setIsRestoring(false);
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        setIsStreaming(false);
+        setError(err instanceof Error ? err.message : '暂时无法恢复记录。');
+        // 保留恢复入口，网络故障不能被当成“没有记录”创建新会话。
+      }
+    }
+    restore();
+    return () => { ac.abort(); if (timer) clearTimeout(timer); };
+  }, [restoreAttempt, applySavedSession]);
+
+  const retryRestore = useCallback(() => setRestoreAttempt(n => n + 1), []);
+
+  const startNewSession = useCallback((initialText?: string, goalId?: string) => {
+    if (isStreaming || isRestoring || activeRequestRef.current) return;
+    startedRef.current = false;
+    setTimeline([]);
+    timelineRef.current = [];
+    setQuest(null);
+    questRef.current = null;
+    questKeyRef.current = '';
+    archivedQuestRef.current = '';
+    setQuestHistory([]);
+    setProposedActivities([]);
+    setCompleted(false);
+    setReward(null);
+    restoreSessionIdRef.current = undefined;
+    setGoalNotice(null);
+    start(initialText, goalId);
+  }, [isStreaming, isRestoring, start]);
+
+  const startGoal = useCallback((goal: import('../../server/goals-types').Goal, minutes: number, scene: string) => {
+    if (isStreaming || isRestoring || activeRequestRef.current) return;
+    if (goal.inProgress) {
+      restoreSessionIdRef.current = goal.inProgress.sessionId;
+      retryRestore();
+      return;
+    }
+    startNewSession(`我现在有${minutes}分钟，${scene}。想继续心愿计划「${goal.plan.title}」。`, goal.id);
+  }, [isStreaming, isRestoring, retryRestore, startNewSession]);
+
   const doSend = useCallback(async (params: {
     type: 'text' | 'select_activity' | 'submit_text' | 'abandon';
     text?: string;
@@ -416,6 +542,7 @@ export function useAgentSession() {
     setIsStreaming(true);
     setError(null);
     setCompleted(false);
+    setGoalNotice(null);
 
     // 乐观骨架：点选活动→立即铺步骤骨架；说"换一批"→立即铺活动骨架
     if (params.type === 'select_activity') setUiOptimistic('step');
@@ -457,12 +584,13 @@ export function useAgentSession() {
       if (ac.signal.aborted) return;
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('abort') || msg.includes('Abort')) return;
+      if (msg.includes('409')) { retryRestore(); return; }
       setError(msg);
       setIsStreaming(false);
     } finally {
       activeRequestRef.current = false;
     }
-  }, [sessionId, pushUserText]);
+  }, [sessionId, pushUserText, retryRestore]);
 
   const sendText = useCallback((text: string) => {
     if (isStreaming || !text.trim()) return;
@@ -504,12 +632,13 @@ export function useAgentSession() {
       if (ac.signal.aborted) return;
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('abort') || msg.includes('Abort')) return;
+      if (msg.includes('409')) { retryRestore(); return; }
       setError(msg);
       setIsStreaming(false);
     } finally {
       activeRequestRef.current = false;
     }
-  }, [isStreaming, sessionId, pushItem]);
+  }, [isStreaming, sessionId, pushItem, retryRestore]);
 
   const abandon = useCallback(() => {
     if (isStreaming) return;
@@ -529,7 +658,8 @@ export function useAgentSession() {
   // 保存喜好档案到长期记忆：PreferenceSheet 提交时调用，保存成功立即更新本地状态
   const saveUserProfile = useCallback(async (input: SaveProfileInput) => {
     const saved = await updateProfile(clientIdRef.current, input);
-    if (saved) setProfile(saved);
+    if (!saved) throw new Error('喜好暂时没能保存，请再试一次。');
+    setProfile(saved);
   }, []);
 
   // 骨架屏：玩家点选/换一批的乐观态立即显示；否则按"UI 已挂起 + Agent 已开口引导"放行
@@ -537,6 +667,10 @@ export function useAgentSession() {
 
   return {
     started,
+    isRestoring,
+    retryRestore,
+    startNewSession,
+    startGoal,
     sessionId,
     timeline,
     fsmState,
@@ -551,6 +685,7 @@ export function useAgentSession() {
     profile,
     questPairs,
     reward,
+    goalNotice,
     quest,
     questHistory,
     proposedActivities,

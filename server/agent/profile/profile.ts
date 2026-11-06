@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { DATA_DIR } from '../../data-path.js';
 import type { SeedMechanism, Seed } from '../skills/quest-library/seeds.js';
 import { QUEST_PAIRS } from './quest-pairs.js';
 
@@ -158,7 +159,7 @@ function defaultProfile(clientId: string): UserProfile {
 
 // ── JSON 文件存储（写穿 + 内存缓存，与 handbook 同一范式）─────────────────────
 
-const DATA_PATH = path.resolve(process.cwd(), 'data', 'profile.json');
+const DATA_PATH = path.join(DATA_DIR, 'profile.json');
 
 let cache: Record<string, UserProfile> | null = null;
 let writeChain: Promise<void> = Promise.resolve();

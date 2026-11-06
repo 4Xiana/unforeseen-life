@@ -22,21 +22,21 @@ interface Props {
 
 function SheetShell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end">
+    <div className="viewport-overlay fixed inset-0 z-40 flex flex-col justify-end">
       <button
         aria-label="关闭卡片弹层"
         onClick={onClose}
         className="absolute inset-0 bg-ink/20 cursor-default"
       />
-      <div className="relative bg-paper rounded-t-[28px] border-t-2 border-paper-edge shadow-[0_-8px_30px_rgba(45,42,38,0.12)] max-h-[78%] flex flex-col animate-slide-up">
+      <div role="dialog" aria-modal="true" aria-label={title} className="call-sheet relative w-full max-w-xl mx-auto bg-paper rounded-t-[28px] border-t-2 border-paper-edge shadow-[0_-8px_30px_rgba(45,42,38,0.12)] max-h-[88%] sm:max-h-[78%] flex flex-col animate-slide-up">
         <div className="shrink-0 pt-2.5 pb-1 flex flex-col items-center gap-1">
           <div className="w-10 h-1.5 rounded-full bg-fog-light/80 rounded-full" />
-          <div className="w-full px-5 pt-2 flex items-center justify-between">
-            <h2 className="font-display text-ink text-[17px] leading-none">{title}</h2>
+          <div className="w-full px-4 sm:px-5 pt-2 flex items-center justify-between gap-3">
+            <h2 className="min-w-0 font-display text-ink text-[17px] leading-snug">{title}</h2>
             <button
               onClick={onClose}
               aria-label="关闭"
-              className="w-7 h-7 rounded-full text-fog hover:text-ink flex items-center justify-center"
+              className="w-11 h-11 shrink-0 rounded-full text-fog hover:text-ink flex items-center justify-center"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
@@ -44,7 +44,7 @@ function SheetShell({ title, onClose, children }: { title: string; onClose: () =
             </button>
           </div>
         </div>
-        <div className="overflow-y-auto px-5 pb-6 scrollbar-hide">
+        <div className="panel-content min-h-0 overflow-y-auto px-5 pb-6 scrollbar-hide">
           <div className="max-w-lg mx-auto">
             {children}
           </div>
@@ -121,7 +121,7 @@ export function CallCardSheet(props: Props) {
 
       {fsmState === 'S3' && (
         <div className="text-center py-6 font-hand text-ink-2 text-[15px] leading-relaxed">
-          这条支线，已经收进手账啦。
+          这条支线，已经存入日常记录啦。
         </div>
       )}
 

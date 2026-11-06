@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { API_BASE } from '../paths';
 
 type TraceEventType =
   | 'session_created'
@@ -99,7 +100,7 @@ function DataBlock({ data }: { data: Record<string, unknown> }) {
         className="text-[11px] font-mono text-fog hover:text-ink transition-colors flex items-center gap-1"
       >
         <span className="inline-block w-3 text-center">{expanded ? '▾' : '▸'}</span>
-        <span className="truncate max-w-[280px]">{preview || '(empty)'}</span>
+        <span className="min-w-0 truncate max-w-[280px]">{preview || '(empty)'}</span>
       </button>
       {expanded && (
         <pre className="mt-1 ml-4 p-2 bg-paper-3/50 border border-paper-edge rounded-sm text-[10px] font-mono text-ink-2 overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap break-all">
@@ -435,7 +436,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
 
   async function fetchSessions() {
     try {
-      const res = await fetch('/api/trace/sessions');
+      const res = await fetch(`${API_BASE}/trace/sessions`);
       const data = await res.json();
       setSessions(data);
       if (!selectedId && data.length > 0) {
@@ -448,7 +449,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
 
   async function fetchTrace(id: string) {
     try {
-      const res = await fetch(`/api/trace/session/${id}`);
+      const res = await fetch(`${API_BASE}/trace/session/${id}`);
       if (!res.ok) { setSelectedTrace(null); return; }
       const data = await res.json();
       setSelectedTrace(data);
@@ -458,7 +459,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
   }
 
   function connectLive() {
-    const es = new EventSource('/api/trace/live');
+    const es = new EventSource(`${API_BASE}/trace/live`);
     es.onopen = () => setConnected(true);
     es.onerror = () => {
       setConnected(false);
@@ -500,9 +501,9 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
   const isLiveSession = selectedId ? (liveEvents.get(selectedId)?.length ?? 0) > 0 : false;
 
   return (
-    <div className="h-screen flex flex-col bg-paper notebook-page overflow-hidden">
+    <div className="trace-dashboard h-[100dvh] flex flex-col bg-paper notebook-page overflow-hidden">
       <header className="shrink-0 z-10 border-b border-paper-edge bg-paper-2/80">
-        <div className="px-5 py-3 flex items-center justify-between">
+        <div className="trace-header px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-coral text-card flex items-center justify-center shadow-paper" style={{ transform: 'rotate(2deg)' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -529,8 +530,8 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        <aside className="w-64 shrink-0 border-r border-fog-light/50 bg-paper-2/40 overflow-y-auto">
+      <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
+        <aside className="trace-sessions w-full sm:w-64 shrink-0 border-b sm:border-b-0 sm:border-r border-fog-light/50 bg-paper-2/40 overflow-y-auto">
           <div className="px-3 py-2 border-b border-fog-light/40 sticky top-0 bg-paper-2/90 backdrop-blur z-10">
             <p className="section-label !text-[10px] !mb-0">Sessions ({sessions.length})</p>
           </div>
@@ -549,16 +550,16 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
           )}
         </aside>
 
-        <main className="flex-1 overflow-y-auto min-w-0">
+        <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
           {!selectedId ? (
             <div className="h-full flex items-center justify-center text-fog text-[13px]">
               选择一个会话查看轨迹
             </div>
           ) : (
-            <div className="p-5 max-w-3xl mx-auto">
+            <div className="p-3 sm:p-5 max-w-3xl mx-auto">
               <div className="index-card mb-5">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-4 mb-3">
+                  <div className="min-w-0">
                     <p className="font-mono text-[10px] text-fog tracking-wider">SESSION</p>
                     <p className="font-mono text-sm text-ink font-bold mt-0.5 break-all">{selectedId}</p>
                   </div>

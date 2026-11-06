@@ -32,6 +32,22 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 5183,
+    strictPort: true,
+    proxy: {
+      '/unforeseen-life/api': {
+        target: 'http://127.0.0.1:5184',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/unforeseen-life/, ''),
+      },
+      '/unforeseen-life/evidence': {
+        target: 'http://127.0.0.1:5184',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/unforeseen-life/, ''),
+      },
+    },
+  },
   build: {
     rollupOptions: {
       input: {

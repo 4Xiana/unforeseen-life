@@ -510,3 +510,212 @@
     animation: none;
   }
 }
+
+/* Responsive layout contract: compact paper cards, readable text, generous hit areas. */
+.app-shell {
+  --app-height: 100dvh;
+  container: app / size;
+  overflow-wrap: anywhere;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.viewport-overlay {
+  bottom: auto;
+  height: var(--app-height, 100dvh);
+  overflow-wrap: anywhere;
+}
+
+.chat-header-inner,
+.immersive-header {
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+}
+
+.chat-header-layout { gap: 12px; flex-wrap: wrap; }
+.chat-brand { flex-shrink: 0; }
+.chat-location { min-width: 0; max-width: 200px; margin-left: auto; }
+.chat-tools { margin-left: auto; }
+.chat-tools button { white-space: nowrap; }
+.chat-home-button:focus-visible, .chat-tools button:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+.chat-progress-tool { position: relative; }
+.chat-progress-dot { position: absolute; top: 6px; right: 6px; }
+.chat-composer { padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
+.landing-profile { top: max(12px, env(safe-area-inset-top, 0px)); }
+.landing-footer,
+.immersive-controls { padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+.landing-keyboard .landing-content { display: flex; flex-direction: column; overflow: hidden; }
+.landing-keyboard .landing-content > div { height: 100%; min-height: 0; padding-bottom: 0; }
+.landing-intake { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+.landing-input { flex-shrink: 0; margin-top: 12px; margin-bottom: 4px; }
+
+.journal-overlay {
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    max(20px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.journal-shell { max-height: 100%; min-height: 0; }
+.journal-panel { max-height: 100%; }
+.panel-content { overscroll-behavior-y: contain; }
+.panel-footer,
+.call-sheet .panel-content {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.quest-drawer { padding-top: env(safe-area-inset-top, 0px); }
+.quest-drawer .panel-content { padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+.preference-sheet {
+  max-height: calc(var(--app-height, 100dvh) - max(16px, env(safe-area-inset-top, 0px)));
+}
+.completion-overlay {
+  overflow-y: auto;
+  padding-top: max(24px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+.completion-shell { max-height: 100%; min-height: 0; }
+.completion-card { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.trace-dashboard {
+  overflow-wrap: anywhere;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.markdown-body pre,
+.markdown-body table { max-width: 100%; overflow-x: auto; }
+.markdown-body table { display: block; }
+.markdown-body pre { padding: 8px; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--moss-deep);
+  outline-offset: 3px;
+}
+
+@media (max-width: 639px), (pointer: coarse) {
+  /* Sizing the actual button avoids overlapping invisible tap targets. */
+  button, a, input:not([type="file"]), select {
+    min-height: 44px;
+  }
+  button { min-width: 44px; touch-action: manipulation; }
+  button.touch-none { touch-action: none; }
+  input:not([type="file"]), textarea, select {
+    font-size: 16px;
+    scroll-margin-block: 16px;
+  }
+  .pair-tab { min-width: 44px; flex-shrink: 0; }
+}
+
+@media (max-width: 639px) {
+  .chat-header-inner { padding-inline: 12px; padding-bottom: 8px; }
+  .chat-header-layout { gap: 8px; }
+  .chat-brand { gap: 8px; }
+  .chat-brand h1 { font-size: 19px; }
+  .chat-brand p { font-size: 12px; margin-top: 4px; }
+  .chat-location { max-width: calc(100% - 156px); padding: 4px 8px; font-size: 11px; }
+  .chat-tools {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 100%;
+    margin: 0;
+  }
+  .chat-tools button { min-width: 0; padding: 6px; font-size: 12px; letter-spacing: 0; }
+  .chat-header > div:last-child { margin-inline: 12px; }
+  .composer-caption { display: none; }
+  .chat-composer input { padding-inline: 8px; }
+  .npc-envelope { gap: 8px; }
+  .npc-envelope > img,
+  .npc-envelope > div[aria-hidden] { width: 28px; }
+  .npc-envelope > img { height: 28px; }
+  .index-card, .sticky-note { padding: 10px 12px; border-radius: 16px; }
+  .ticket-card { padding: 12px; border-radius: 16px; }
+  .ticket-card > .absolute { right: 10px; }
+  .activity-card-content > div:first-child { width: 28px; height: 28px; }
+  .activity-card-content h3 { font-size: 15px; }
+  .activity-card-content .tag { padding: 2px 7px; }
+  .ticket-card.rotate-neg-1,
+  .ticket-card.rotate-pos-1,
+  .task-card,
+  .sticky-note { transform: none; }
+  .task-card { border-radius: 18px; }
+  .step-timer { gap: 8px; padding: 8px; }
+  .step-timer button { flex-shrink: 0; }
+  .step-timer > div:last-child { gap: 4px; }
+  .step-progress { overscroll-behavior-x: contain; }
+
+  .landing-hero { padding-top: max(36px, env(safe-area-inset-top, 0px)); padding-inline: 16px; }
+  .landing-mascot { width: clamp(112px, 19vh, 152px); height: auto; aspect-ratio: 1; }
+  .landing-hero h1 { font-size: clamp(17px, 4.8vw, 20px); line-height: 1.4; margin-top: 10px; }
+  .landing-voice-content { padding-top: 16px; padding-bottom: 12px; }
+  .landing-mic { width: 96px; height: 96px; }
+  .landing-footer { padding-inline: 16px; padding-top: 10px; }
+  .landing-actions { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr); gap: 10px; }
+  .landing-actions button { padding: 10px 8px; font-size: 13px; white-space: nowrap; justify-content: center; }
+  .landing-actions button:nth-child(2) { width: 44px; height: 44px; padding: 0; }
+  .landing-intake button { padding-inline: 10px; }
+  .landing-keyboard .landing-hero { padding-top: 16px; padding-bottom: 12px; }
+  .landing-keyboard .landing-mascot { width: 72px; }
+  .landing-keyboard .landing-hero > div { font-size: 17px; }
+
+  .journal-overlay { align-items: flex-end; padding: max(12px, env(safe-area-inset-top, 0px)) 0 0; }
+  .journal-shell { max-height: 100%; }
+  .journal-shell > .tape { display: none; }
+  .journal-panel { border-radius: 24px 24px 0 0; }
+  .panel-header { padding: 16px 16px 12px; }
+  .panel-header h2 { font-size: 21px; line-height: 1.25; }
+  .panel-header p { margin-top: 6px; font-size: 13px; }
+  .panel-content { padding-inline: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .panel-footer { padding-inline: 16px; padding-top: 8px; }
+  .category-stamps > div { min-width: 0; }
+  .category-stamps > div > div { width: 40px; height: 40px; font-size: 16px; }
+  .category-stamps span { font-size: 11px; text-align: center; }
+  .call-sheet { border-radius: 24px 24px 0 0; }
+  .quest-rail { gap: 8px; }
+
+  .immersive-header > div:first-child { padding-top: 0; padding-bottom: 8px; }
+  .immersive-hero { padding-top: 20px; padding-bottom: 8px; }
+  .immersive-avatar { width: 104px; height: 104px; }
+  .immersive-controls { padding-inline: 20px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  .immersive-controls > div { max-width: 280px; }
+  .immersive-controls p { margin-top: 8px; }
+  .trace-sessions { max-height: 25dvh; }
+  .trace-header > div:last-child { flex: 1; justify-content: space-between; }
+  .trace-dashboard pre { font-size: 12px; }
+  .trace-dashboard button { max-width: 100%; }
+}
+
+/* Respond to the visible app height, including an open software keyboard. */
+@container app (max-height: 700px) {
+  .landing-hero { padding-top: 24px; }
+  .landing-mascot { width: 104px; height: 104px; }
+  .landing-voice-content { padding-top: 12px; }
+  .landing-mic { width: 88px; height: 88px; }
+  .landing-footer { padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  .immersive-hero { padding-top: 12px; padding-bottom: 4px; }
+  .immersive-avatar { width: 88px; height: 88px; }
+}
+
+@container app (max-height: 500px) {
+  .landing-hero {
+    display: grid;
+    grid-template-columns: 48px auto;
+    column-gap: 10px;
+    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 56px 8px;
+  }
+  .landing-hero .landing-mascot { grid-row: span 2; width: 48px; height: 48px; }
+  .landing-hero > div { font-size: 16px; margin: 0; }
+  .landing-hero h1 { font-size: 14px; margin: 4px 0 0; line-height: 1.4; }
+  .landing-hero > svg { display: none; }
+  .landing-voice-content { padding-top: 4px; }
+  .landing-voice-content > div:first-child { min-height: 0; margin-bottom: 0; }
+  .landing-mic { width: 64px; height: 64px; }
+  .landing-footer { padding-top: 4px; }
+  .immersive-hero { flex-direction: row; justify-content: center; gap: 12px; padding: 8px; }
+  .immersive-avatar { width: 48px; height: 48px; }
+  .immersive-hero > div:last-child { margin-top: 0; }
+  .immersive-controls > div > button:nth-child(2) { width: 56px; height: 56px; }
+  .immersive-controls p { margin-top: 4px; }
+  .chat-header-inner { padding-top: max(4px, env(safe-area-inset-top, 0px)); }
+  .chat-brand p { display: none; }
+}
+
+.chat-tools button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: 50%; flex-shrink: 0; }
+.chat-home-button { min-width: 44px; min-height: 44px; }

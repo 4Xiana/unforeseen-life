@@ -33,6 +33,6 @@ export const TOOL_STEPPING_TEXT: Record<string, string> = {
 };
 
 export const SUBMISSION_PROMPTS: Record<string, string> = {
-  text: '把这一步的答案写下来——按上面的要求写清楚',
-  photo: '拍一张现场照，再回答上面的问题 📷',
+  text: '把这一步的感受或答案写下来吧，随意一点就好',
+  photo: '拍一张此时此地的现场照，再随手写两句 📷',
 };

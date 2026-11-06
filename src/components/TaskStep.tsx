@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useId } from 'react';
 import type { PublishedStep, SubmissionType } from '../types';
-import { VoiceButton } from './VoiceButton';
+import { VoiceButton, VoiceStatus } from './VoiceButton';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 import { StepTimer } from './StepTimer';
 import type { StepTimerApi } from '../hooks/useStepTimer';
+import { JourneyContext } from './JourneyContext';
 
 // ── 步骤提交动作区：聊天任务卡与任务进度抽屉共用一套 ──
 // text=文字证物输入；photo=拍照 + 回答（两者齐备才放行）。
@@ -64,6 +65,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
       <div className="space-y-2">
         <div className="relative">
           <textarea
+            aria-label="文字证物"
             value={textValue}
             onChange={e => setTextValue(e.target.value)}
             onKeyDown={e => {
@@ -75,18 +77,20 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
             placeholder={textVoice.listening ? '正在聆听，说完点一下麦克风…' : (step.proofPrompt ? `按上面的要求交证物：${step.proofPrompt}` : '在此写下你的记录...')}
             disabled={disabled}
             rows={compact ? 2 : 3}
-            className="w-full bg-paper border border-fog-light text-ink p-3.5 pr-11 text-[14px] leading-relaxed resize-none focus:border-moss focus:outline-none placeholder:text-fog rounded-2xl writing-lines"
+            className="w-full bg-paper border border-fog-light text-ink p-3 pr-14 text-[14px] leading-relaxed resize-none focus:border-moss focus:outline-none placeholder:text-fog rounded-2xl writing-lines"
           />
           {textVoice.supported && (
             <VoiceButton
               variant="corner"
               listening={textVoice.listening}
+              phase={textVoice.phase}
               error={textVoice.error}
               onToggle={textVoice.toggle}
               disabled={disabled}
             />
           )}
         </div>
+        <VoiceStatus phase={textVoice.phase} error={textVoice.error} />
         <button onClick={handleTextSubmit} disabled={disabled || !textValue.trim()} className={primaryBtn}>
           提交记录
         </button>
@@ -138,6 +142,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
 
       <div className="relative">
         <textarea
+          aria-label="照片说明"
           value={answerValue}
           onChange={e => setAnswerValue(e.target.value)}
           onKeyDown={e => {
@@ -149,18 +154,20 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
           placeholder={answerVoice.listening ? '正在聆听，说完点一下麦克风…' : '对着照片回答上面那个问题，一句话就行…'}
           disabled={disabled}
           rows={2}
-          className="w-full bg-paper border border-fog-light text-ink p-3.5 pr-11 text-[14px] leading-relaxed resize-none focus:border-moss focus:outline-none placeholder:text-fog rounded-2xl writing-lines"
+          className="w-full bg-paper border border-fog-light text-ink p-3 pr-14 text-[14px] leading-relaxed resize-none focus:border-moss focus:outline-none placeholder:text-fog rounded-2xl writing-lines"
         />
         {answerVoice.supported && (
           <VoiceButton
             variant="corner"
             listening={answerVoice.listening}
+            phase={answerVoice.phase}
             error={answerVoice.error}
             onToggle={answerVoice.toggle}
             disabled={disabled}
           />
         )}
       </div>
+      <VoiceStatus phase={answerVoice.phase} error={answerVoice.error} />
       <button
         onClick={handlePhotoSubmit}
         disabled={disabled || !photoFile || !answerValue.trim()}
@@ -193,7 +200,8 @@ export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, d
 
   return (
     <div className="my-4 animate-slide-up">
-      <div className="paper-card relative overflow-hidden rotate-neg-1 p-5 rounded-[24px]">
+      <JourneyContext journey={step.journey} />
+      <div className="task-card paper-card relative overflow-hidden rotate-neg-1 p-3 sm:p-5 rounded-[24px]">
         <div className="tape tape-top-left" />
 
         <div className="flex items-center justify-between mb-4 pb-3 perforation">
@@ -211,13 +219,13 @@ export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, d
           </span>
         </div>
 
-        <div className="flex items-center gap-1 mb-4">
+        <div className="step-progress flex items-center gap-1 mb-4 overflow-x-auto py-1">
           {Array.from({ length: total }, (_, i) => {
             const idx = i + 1;
             const isDone = idx < stepNum;
             const isCurrent = idx === stepNum;
             return (
-              <div key={i} className="flex items-center flex-1">
+              <div key={i} className="flex items-center flex-1 min-w-[28px]">
                 <div
                   className={`w-6 h-6 text-[11px] rounded-full flex items-center justify-center font-display shrink-0 transition-all duration-300 ${
                     isDone
@@ -241,13 +249,13 @@ export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, d
           })}
         </div>
 
-        <div className="bg-paper border border-paper-edge/60 p-4 mb-4 rounded-2xl relative">
+        <div className="bg-paper border border-paper-edge/60 p-3 sm:p-4 mb-3 sm:mb-4 rounded-2xl relative">
           <div className="absolute top-2.5 bottom-2.5 left-0 w-1 bg-moss rounded-full"/>
-          <p className="text-ink font-semibold pl-3 text-[15px] leading-[1.75]">
+          <p className="text-ink font-semibold pl-1 sm:pl-3 text-[15px] leading-[1.75]">
             {step.instruction}
           </p>
           {step.hint && (
-            <p className="font-hand text-fog text-[14px] mt-2 leading-relaxed pl-3">
+            <p className="font-hand text-fog text-[14px] mt-2 leading-relaxed pl-1 sm:pl-3">
               {step.hint}
             </p>
           )}
