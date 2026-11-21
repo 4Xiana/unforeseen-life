@@ -1,3 +1,4 @@
+import { assertMobileShell } from './mobile-shell.mjs';
 // Shared-browser regression; all API writes use isolated fixtures, never real user data.
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
@@ -60,6 +61,7 @@ async function question(n) {
   await page.locator('.fitting-question-top').filter({ hasText: `第 ${n} / 30 组` }).waitFor();
 }
 async function layout() {
+  await assertMobileShell(page);
   assert.deepEqual(await page.locator('.preferences-hub').evaluate(root => ({
     overflow: root.scrollWidth > root.clientWidth + 1,
     clipped: [...root.querySelectorAll('button,input')].filter(e => e.getClientRects().length).some(e => { const r = e.getBoundingClientRect(); return r.left < -1 || r.right > innerWidth + 1; }),

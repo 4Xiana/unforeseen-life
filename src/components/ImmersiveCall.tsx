@@ -186,7 +186,7 @@ export function ImmersiveCall(props: Props) {
       </div>
 
       {/* 字幕区 */}
-      <div className="immersive-captions flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3">
+      <div className="immersive-captions flex-1 min-h-0 overflow-y-auto px-4 py-3">
         <div className="max-w-md mx-auto flex flex-col justify-end gap-2.5 min-h-full">
           {recent.map((it, i) => {
             const isLatest = !listeningNow && i === recent.length - 1;

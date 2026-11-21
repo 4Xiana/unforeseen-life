@@ -1,3 +1,4 @@
+import { assertMobileShell } from './mobile-shell.mjs';
 // Test the hosted build in the user's shared browser, with isolated fixture data.
 // API writes are intercepted: this suite never creates sessions, goals, or real profiles.
 import { createRequire } from 'node:module';
@@ -57,6 +58,7 @@ async function loadGuide(stored = '0') {
   await page.reload({ waitUntil: 'domcontentloaded' });
 }
 async function layout() {
+  await assertMobileShell(page);
   const result = await page.locator('.app-guide').evaluate(root => {
     const footer = root.querySelector('.quick-guide-footer').getBoundingClientRect();
     const skip = root.querySelector('.app-guide-top button').getBoundingClientRect();

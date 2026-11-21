@@ -1,3 +1,4 @@
+import { assertMobileShell } from './mobile-shell.mjs';
 // Exercise the hosted app in the shared browser. Every API write is intercepted.
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
@@ -75,6 +76,7 @@ const proof = () => page.getByRole('textbox', { name: '文字证物', exact: tru
 const pick = () => page.locator('.ticket-card:not(:disabled)').filter({ hasText: activity.title });
 async function send(text) { await chat().fill(text); await button('发送消息').click(); }
 async function layout() {
+  await assertMobileShell(page);
   const result = await page.locator('.session-layout').evaluate(root => ({
     overflow: root.scrollWidth > innerWidth + 1,
     clipped: [...root.querySelectorAll('button,input,textarea')].filter(e => e.getClientRects().length && !e.closest('[inert]')).some(e => { const r = e.getBoundingClientRect(); return r.left < -1 || r.right > innerWidth + 1; }),

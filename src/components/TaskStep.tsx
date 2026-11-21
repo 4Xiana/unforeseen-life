@@ -214,7 +214,7 @@ export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, d
   return (
     <div className="my-4 animate-slide-up">
       <JourneyContext journey={step.journey} />
-      <div className="task-card paper-card relative overflow-hidden rotate-neg-1 p-3 sm:p-5 rounded-[24px]">
+      <div className="task-card paper-card relative overflow-hidden rotate-neg-1 p-3 rounded-[24px]">
         <div className="tape tape-top-left" />
 
         <div className="flex items-center justify-between mb-4 pb-3 perforation">
@@ -262,13 +262,13 @@ export function TaskStep({ step, total, onSubmitText, onSubmitPhoto, disabled, d
           })}
         </div>
 
-        <div className="bg-paper border border-paper-edge/60 p-3 sm:p-4 mb-3 sm:mb-4 rounded-2xl relative">
+        <div className="bg-paper border border-paper-edge/60 p-3 mb-3 rounded-2xl relative">
           <div className="absolute top-2.5 bottom-2.5 left-0 w-1 bg-moss rounded-full"/>
-          <p className="text-ink font-semibold pl-1 sm:pl-3 text-[15px] leading-[1.75]">
+          <p className="text-ink font-semibold pl-1 text-[15px] leading-[1.75]">
             {step.instruction}
           </p>
           {step.hint && (
-            <p className="font-hand text-fog text-[14px] mt-2 leading-relaxed pl-1 sm:pl-3">
+            <p className="font-hand text-fog text-[14px] mt-2 leading-relaxed pl-1">
               {step.hint}
             </p>
           )}

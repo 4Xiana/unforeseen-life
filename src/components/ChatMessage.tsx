@@ -40,7 +40,7 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
   if (!isNpc) {
     return (
       <div className="flex justify-end animate-slide-in-right">
-        <div className="user-message min-w-0 max-w-[88%] sm:max-w-[78%]">
+        <div className="user-message min-w-0 max-w-[88%]">
           <div className="sticky-note rotate-neg-1 text-ink text-[14px] leading-[1.8] whitespace-pre-wrap break-words">
             {message.imageUrl && (
               <img
@@ -62,7 +62,7 @@ export function ChatMessage({ message, isStreaming, isThinking, steppingText, sh
 
   return (
     <div className="flex justify-start animate-slide-in-left">
-      <div className="npc-envelope min-w-0 max-w-full sm:max-w-[85%] flex gap-2.5">
+      <div className="npc-envelope min-w-0 max-w-full flex gap-2.5">
         {showHeader ? (
           <img
             src={appUrl('agent_avatar.png')}

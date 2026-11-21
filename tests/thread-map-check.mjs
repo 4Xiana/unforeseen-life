@@ -1,3 +1,4 @@
+import { assertMobileShell } from './mobile-shell.mjs';
 // Shared browser, deterministic API fixtures. No writes reach real user data or models.
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
@@ -61,6 +62,7 @@ const button=name=>page.getByRole('button',{name,exact:true});
 const branch=title=>button(`查看支线：${title}`);
 async function open(){await button('我的手册').click();await page.getByRole('tab',{name:'支线脉络'}).click();await branch('把想象变成作品').waitFor();await page.getByText('正在翻开你的探索地图…',{exact:true}).waitFor({state:'hidden'});}
 async function layout(){
+  await assertMobileShell(page);
  const data=await page.locator('.library-overlay').evaluate(root=>({overflow:root.scrollWidth>innerWidth+1,clipped:[...root.querySelectorAll('button,input,textarea')].filter(e=>e.getClientRects().length).some(e=>{const r=e.getBoundingClientRect();return r.left < -1||r.right>innerWidth+1;}),smallButtons:[...root.querySelectorAll('button')].filter(e=>e.getClientRects().length).some(e=>{const r=e.getBoundingClientRect();return r.width<43.5||r.height<43.5;})}));
  assert.deepEqual(data,{overflow:false,clipped:false,smallButtons:false});
 }

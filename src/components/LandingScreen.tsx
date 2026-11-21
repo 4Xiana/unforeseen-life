@@ -164,7 +164,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
       </div>
 
       {/* ── 中部：语音 / 键盘 二态；矮屏时整区可滚动，绝不与底部按钮重叠 ── */}
-      <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 sm:px-6 overflow-y-auto scrollbar-hide">
+      <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 overflow-y-auto scrollbar-hide">
         {mode === 'voice' ? (
           <div key="voice" className="landing-voice-content min-h-full flex flex-col justify-start items-center pt-6 animate-fade-in">
             {/* 引导语 / 实时转写卡 */}
@@ -218,7 +218,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
               今天，想试点什么？<br />
               有想法就说，没有也没关系。
             </p>
-            <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 sm:p-4 shadow-paper">
+            <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 shadow-paper">
               {INTAKE_GROUPS.map((g, gi) => (
                 <div
                   key={g.label}
@@ -226,7 +226,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
                     ? 'flex items-start gap-2.5'
                     : 'flex items-start gap-2.5 border-t border-dashed border-ink/10 mt-3.5 pt-3'}
                 >
-                  <span className="shrink-0 w-12 sm:w-14 pt-3 text-right font-hand text-fog text-[13px]">{g.label}</span>
+                  <span className="shrink-0 w-12 pt-3 text-right font-hand text-fog text-[13px]">{g.label}</span>
                   <div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
                     {g.options.map(phrase => (
                       <Chip

@@ -176,7 +176,7 @@
 @keyframes walk-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes walk-focus-ring { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.025); } }
 @keyframes guide-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (max-width: 600px) {
+@container app (max-width: 600px) {
   .app-guide { padding: 0; }
   .app-guide-book { height: 100%; border: 0; border-radius: 0; }
   .app-guide-top { padding: max(4px, env(safe-area-inset-top)) 16px 0; gap: 8px; }
@@ -228,11 +228,11 @@
   .guide-floating.has-scene .guide-caption-text { min-height: 0; font-size: 16px; }
   .app-guide-controls { margin-top: 16px; }
 }
-@media (max-width: 600px) {
+@container app (max-width: 600px) {
   .app-guide:has(.scene-try-form) .app-guide-welcome > img { width: 64px; height: 64px; }
   .app-guide:has(.scene-try-form) .app-guide-welcome { gap: 8px; margin-top: 0; }
 }
-@media (max-width: 360px) {
+@container app (max-width: 360px) {
   .app-guide .goals-field-pair { grid-template-columns: 1fr; }
   .app-guide .preference-question button.flex-1 { min-height: 104px; gap: 6px; padding-inline: 6px; }
   .app-guide .preference-question button.flex-1 > span:nth-child(2) { font-size: 14px; }
@@ -295,7 +295,7 @@
 .quick-wish-seeds button[aria-pressed=true] { background: var(--guide-selected); border-color: var(--moss-deep); color: var(--moss-deep); }
 .quick-form-submit { width: 100%; margin-top: 24px; }
 .quick-guide-error { margin-top: 12px; }
-@media (max-width: 600px), (max-height: 600px) {
+@container app (max-width: 600px) or (max-height: 600px) {
   .app-guide-compact .app-guide-book { height: 100%; }
   .app-guide-compact .quick-guide-footer { padding-inline: 16px; }
 }

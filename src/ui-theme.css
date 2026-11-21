@@ -89,7 +89,7 @@ body::before, body::after { display: none; }
 .landing-actions > button:nth-child(2) { border: 1px solid var(--surface-line); background: transparent; }
 .landing-screen .index-card { transform: none !important; box-shadow: none; border: 1px solid var(--surface-line); }
 .landing-mic { background: var(--moss-deep); box-shadow: 0 8px 22px #4f6b361a; }
-@media(max-width:600px) {
+@container app (max-width:600px) {
   .app-shell :is(.library-header h1, .thread-page-heading h2, .preferences-hub-header h2, .inspiration-intro h2) { font-size: 25px; }
   .library-header { padding-bottom: 12px; }
   .landing-voice-content { padding-top: 24px; }

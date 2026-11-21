@@ -1,0 +1,56 @@
+/* A single phone-sized surface for pages and all fixed dialogs.
+   Layout containment anchors fixed descendants to this shell, including on desktop. */
+.app-shell {
+  width: 100%;
+  max-width: 430px;
+  height: var(--app-height, 100dvh);
+  margin-inline: auto;
+  position: relative;
+  contain: size layout style;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px rgb(45 42 38 / 6%);
+}
+
+.app-shell :is(button, a, summary, select, input:not([type="file"]):not([type="checkbox"]):not([type="radio"])) {
+  min-height: 44px;
+}
+.app-shell button { min-width: 44px; touch-action: manipulation; }
+.app-shell button.touch-none { touch-action: none; }
+.app-shell :is(input, textarea, select) { font-size: 16px; }
+.app-shell :is(img, video) { max-width: 100%; }
+.app-shell :is(.viewport-overlay, .library-overlay, .goals-overlay) { max-width: 100%; }
+
+.app-shell .app-guide { padding: 0; }
+.app-shell .app-guide-book { width: 100%; height: 100%; border: 0; border-radius: 0; }
+.app-shell :is(.app-guide-top, .app-guide-progress, .app-guide-page) { padding-inline: 16px; }
+.app-shell .app-guide-top { padding-top: max(12px, env(safe-area-inset-top, 0px)); }
+.app-shell .quick-guide-footer { padding-inline: 16px; }
+.app-shell .landing-content { max-width: 100%; padding-inline: 16px; }
+.app-shell .landing-intake { padding: 12px; }
+.app-shell .landing-intake > div > span { width: 48px; }
+.app-shell .landing-screen > button { top: max(8px, env(safe-area-inset-top, 0px)); }
+.app-shell .quest-drawer { max-width: 100%; }
+.app-shell .call-sheet { max-height: 88%; }
+.app-shell .completion-overlay { padding-inline: 16px; }
+.app-shell .completion-card { padding: 24px 20px; }
+.app-shell .immersive-captions { padding-inline: 16px; }
+.app-shell .is-assistance { width: 100%; }
+.app-shell :is(.conversation-scroll, .conversation-composer) { padding-inline: 16px; }
+.app-shell .conversation-brand p { font-size: 13px; }
+.app-shell .task-title h1 { font-size: 25px; }
+.app-shell .task-current-step { padding: 20px 16px; }
+.app-shell .task-current-step h2 { font-size: 21px; }
+.app-shell :is(.library-header h1, .thread-page-heading h2, .preferences-hub-header h2, .inspiration-intro h2) { font-size: 24px; }
+.app-shell .library-tabs { gap: 0; }
+.app-shell .trace-dashboard { height: 100%; }
+.app-shell .trace-dashboard > div:last-child { flex-direction: column; }
+.app-shell .trace-sessions { width: 100%; max-height: 25cqh; border-right: 0; border-bottom: 1px solid var(--paper-edge); }
+
+@container app (max-height: 500px) {
+  .conversation-header, .task-workspace-header { padding-block: max(6px, env(safe-area-inset-top, 0px)) 6px; }
+  .conversation-brand p, .task-workspace-header .session-eyebrow, .conversation-caption, .task-ask small, .conversation-context span { display: none; }
+  .conversation-composer { padding-block: 6px; }
+  .task-companion { padding-block: 2px; }
+}

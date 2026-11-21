@@ -14,6 +14,7 @@
     "test:persistence": "npm --prefix server run build && server/node_modules/.bin/tsx --test tests/sessionPersistence.test.ts",
     "test:goals": "server/node_modules/.bin/tsx --test tests/longTermGoals.test.ts",
     "test:onboarding": "node tests/app-onboarding-check.mjs",
+    "test:mobile": "node tests/mobile-pages-check.mjs",
     "preview": "vite preview --base=/unforeseen-life/",
     "preview:backend": "PORT=5184 npm --prefix server run dev",
     "preview:local": "npm run build:deploy && concurrently --kill-others -n server,web -c cyan,yellow \"npm:preview:backend\" \"npm:preview\"",

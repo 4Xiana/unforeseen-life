@@ -28,10 +28,10 @@ function SheetShell({ title, onClose, children }: { title: string; onClose: () =
         onClick={onClose}
         className="absolute inset-0 bg-ink/20 cursor-default"
       />
-      <div role="dialog" aria-modal="true" aria-label={title} className="call-sheet relative w-full max-w-xl mx-auto bg-paper rounded-t-[28px] border-t-2 border-paper-edge shadow-[0_-8px_30px_rgba(45,42,38,0.12)] max-h-[88%] sm:max-h-[78%] flex flex-col animate-slide-up">
+      <div role="dialog" aria-modal="true" aria-label={title} className="call-sheet relative w-full max-w-xl mx-auto bg-paper rounded-t-[28px] border-t-2 border-paper-edge shadow-[0_-8px_30px_rgba(45,42,38,0.12)] max-h-[88%] flex flex-col animate-slide-up">
         <div className="shrink-0 pt-2.5 pb-1 flex flex-col items-center gap-1">
           <div className="w-10 h-1.5 rounded-full bg-fog-light/80 rounded-full" />
-          <div className="w-full px-4 sm:px-5 pt-2 flex items-center justify-between gap-3">
+          <div className="w-full px-4 pt-2 flex items-center justify-between gap-3">
             <h2 className="min-w-0 font-display text-ink text-[17px] leading-snug">{title}</h2>
             <button
               onClick={onClose}

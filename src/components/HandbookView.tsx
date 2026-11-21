@@ -13,7 +13,7 @@ interface Props {
 
 function CategoryStamps({ view }: { view: HandbookView }) {
   return (
-    <div className="category-stamps grid grid-cols-5 gap-1 sm:gap-2 mb-5">
+    <div className="category-stamps grid grid-cols-5 gap-1 mb-5">
       {CATEGORY_ORDER.map((cat) => {
         const meta = CATEGORY_META[cat];
         const count = view.stats.byCategory[cat] || 0;

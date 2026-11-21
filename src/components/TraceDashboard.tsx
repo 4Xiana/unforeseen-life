@@ -503,7 +503,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
   return (
     <div className="trace-dashboard h-[100dvh] flex flex-col bg-paper notebook-page overflow-hidden">
       <header className="shrink-0 z-10 border-b border-paper-edge bg-paper-2/80">
-        <div className="trace-header px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="trace-header px-3 py-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-coral text-card flex items-center justify-center shadow-paper" style={{ transform: 'rotate(2deg)' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -530,8 +530,8 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
-        <aside className="trace-sessions w-full sm:w-64 shrink-0 border-b sm:border-b-0 sm:border-r border-fog-light/50 bg-paper-2/40 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <aside className="trace-sessions w-full shrink-0 border-b border-fog-light/50 bg-paper-2/40 overflow-y-auto">
           <div className="px-3 py-2 border-b border-fog-light/40 sticky top-0 bg-paper-2/90 backdrop-blur z-10">
             <p className="section-label !text-[10px] !mb-0">Sessions ({sessions.length})</p>
           </div>
@@ -556,9 +556,9 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
               选择一个会话查看轨迹
             </div>
           ) : (
-            <div className="p-3 sm:p-5 max-w-3xl mx-auto">
+            <div className="p-3 max-w-3xl mx-auto">
               <div className="index-card mb-5">
-                <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-4 mb-3">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                   <div className="min-w-0">
                     <p className="font-mono text-[10px] text-fog tracking-wider">SESSION</p>
                     <p className="font-mono text-sm text-ink font-bold mt-0.5 break-all">{selectedId}</p>
