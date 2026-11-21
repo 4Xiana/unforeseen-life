@@ -8,6 +8,7 @@ interface Props {
   embedded?: boolean;
   onStartQuest: () => void;
   busy?: boolean;
+  onOpenThreads?: () => void;
 }
 
 function CategoryStamps({ view }: { view: HandbookView }) {
@@ -87,7 +88,7 @@ function BadgeWall({ badges, showConditions = false }: { badges: BadgeState[]; s
   );
 }
 
-export function HandbookView({ view, onClose, embedded = false, onStartQuest, busy = false }: Props) {
+export function HandbookView({ view, onClose, embedded = false, onStartQuest, busy = false, onOpenThreads }: Props) {
   const empty = view.stats.total === 0;
   return (
     <div className={embedded ? 'handbook-embedded' : 'viewport-overlay journal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in'}
@@ -118,6 +119,7 @@ export function HandbookView({ view, onClose, embedded = false, onStartQuest, bu
           </div>
 
           <div className="panel-content px-6 pb-6 overflow-y-auto min-h-0">
+            {onOpenThreads && <button type="button" className="handbook-thread-link" onClick={onOpenThreads}>把经历连起来，看看我的支线脉络 →</button>}
             {empty ? (
               <div className="handbook-empty">
                 <BadgeWall badges={view.badges.filter(b => !b.earned).slice(0, 6)} showConditions />

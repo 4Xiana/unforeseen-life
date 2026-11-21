@@ -36,7 +36,7 @@ await page.route('**/api/**', async route => {
   if (method !== 'GET') return route.fulfill({ status: 500, json: { error: `Unexpected write: ${path}` } });
   if (path === '/api/handbook') return route.fulfill({ json: handbook });
   if (path === '/api/session/active') return route.fulfill({ json: null });
-  if (path === '/api/quest-pairs' || path === '/api/goals') return route.fulfill({ json: [] });
+  if (path === '/api/quest-pairs' || path === '/api/goals' || path === '/api/quest-threads') return route.fulfill({ json: [] });
   return route.fulfill({ status: 404, json: {} });
 });
 await page.addInitScript(() => {
@@ -122,6 +122,7 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' }); await button('我的手册').waitFor();
     assert.equal(await page.locator('.app-guide').count(), 0, 'Completed guide stays closed');
     await button('我的手册').click();
+    await page.getByRole('tab', { name: '心愿计划' }).click();
     await page.getByRole('region', { name: '本机心愿草稿' }).waitFor();
     await button('继续安排这个心愿 →').click();
     assert.equal(await page.getByRole('textbox', { name: '我的愿望' }).inputValue(), '重新捡起画画');

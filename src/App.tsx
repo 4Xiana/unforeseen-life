@@ -13,6 +13,7 @@ import { AppOnboarding } from './components/AppOnboarding';
 import { useAppOnboarding, useFirstVisitGuide } from './hooks/useAppOnboarding';
 import { ConversationPanel } from './components/ConversationPanel';
 import { TaskWorkspace } from './components/TaskWorkspace';
+import { ThreadMapView } from './components/ThreadMapView';
 import './components/session-layout.css';
 
 /**
@@ -90,7 +91,7 @@ export default function App() {
   const [inputValue, setInputValue] = useState('');
   const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
   const [showHome, setShowHome] = useState(false);
-  const openLibrary = (tab: LibraryTab = 'goals') => { refreshHandbook(); setLibraryTab(tab); };
+  const openLibrary = (tab: LibraryTab = 'threads') => { refreshHandbook(); setLibraryTab(tab); };
   const startFromHome = (text?: string) => {
     setShowHome(false);
     if (started) { if (text?.trim()) sendText(text.trim()); }
@@ -175,10 +176,14 @@ export default function App() {
       style={viewportHeight ? { height: viewportHeight, '--app-height': `${viewportHeight}px` } as CSSProperties : undefined}
     >
       {libraryTab && <PersonalLibrary tab={libraryTab} onTabChange={setLibraryTab} onClose={() => setLibraryTab(null)} onOpenGuide={openGuide} needsPreferences={!profile?.onboarded} panels={guide => ({
+        threads: <ThreadMapView view={handbook} active={libraryTab === 'threads'} busy={isInputDisabled} executing={fsmState === 'S2'} onExplore={text => {
+          if (isInputDisabled || fsmState === 'S2') return;
+          setLibraryTab(null); setShowHome(false); setInputValue(''); setBrowseAfterCompletion(false); startNewSession(text);
+        }} onGoals={() => setLibraryTab('goals')} onRecords={() => setLibraryTab('handbook')} onRetryRecords={refreshHandbook} />,
         inspiration: <InspirationView />,
         preferences: <PreferenceSheet embedded open guided={guide.guidedPreferences} onSaved={guide.onPreferencesSaved} onClose={() => setLibraryTab(null)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onFit={fitUserProfile} />,
         goals: <GoalsView embedded guided={guide.guidedGoals} onGoalsLoaded={guide.onGoalsLoaded} onConfirmed={guide.onGoalConfirmed} onClose={() => setLibraryTab(null)} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} />,
-        handbook: handbook ? <HandbookView embedded view={handbook} onClose={() => setLibraryTab(null)} busy={isStreaming || isConnecting || isRestoring} onStartQuest={() => { setLibraryTab(null); setShowHome(false); if (!started) start('我有15分钟，想做一件轻松的小事'); }} /> : <div className="library-loading" role="status">还没能打开日常记录<button onClick={refreshHandbook}>重新加载</button></div>,
+        handbook: handbook ? <HandbookView embedded view={handbook} onClose={() => setLibraryTab(null)} busy={isStreaming || isConnecting || isRestoring} onOpenThreads={() => setLibraryTab('threads')} onStartQuest={() => { setLibraryTab(null); setShowHome(false); if (!started) start('我有15分钟，想做一件轻松的小事'); }} /> : <div className="library-loading" role="status">还没能打开日常记录<button onClick={refreshHandbook}>重新加载</button></div>,
       })} />}
       {!started && isRestoring ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center" role="status">

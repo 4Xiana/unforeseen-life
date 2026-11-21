@@ -18,6 +18,7 @@ import { getGoalStore } from './goal-store.js';
 import { goalInputSchema, generateGoalPlan, exampleInput, examplePlan } from './goal-planner.js';
 import { extractInspiration, inspirationInput, getInspirationStore } from './inspiration.js';
 import { synthesizeSpeech } from './minimax-tts.js';
+import { getQuestThreadStore, threadInput } from './quest-threads.js';
 
 const app = express();
 const port = Number(process.env.PORT);
@@ -247,6 +248,31 @@ app.get('/api/handbook', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+app.get('/api/quest-threads', (req, res) => {
+  const clientId = req.get('X-Client-Id') || '';
+  if (!clientId) { res.status(400).json({ error: 'clientId required' }); return; }
+  try { res.json(getQuestThreadStore().list(clientId)); }
+  catch { res.status(500).json({ error: '暂时无法打开支线，请重试' }); }
+});
+async function saveQuestThread(req: express.Request, res: express.Response) {
+  const clientId = req.get('X-Client-Id') || '';
+  const parsed = threadInput.safeParse(req.body);
+  if (!clientId || !parsed.success) { res.status(400).json({ error: '请填写支线名称，并至少选择一段自己的经历' }); return; }
+  try {
+    const view = await getView(clientId);
+    const thread = getQuestThreadStore().save(clientId, parsed.data, new Set(view.quests.map(q => q.id)), req.params.id ? String(req.params.id) : undefined);
+    res.json(thread);
+  } catch (err) { res.status(409).json({ error: err instanceof Error ? err.message : '保存失败，请重试' }); }
+}
+app.post('/api/quest-threads', saveQuestThread);
+app.put('/api/quest-threads/:id', saveQuestThread);
+app.delete('/api/quest-threads/:id', (req, res) => {
+  const clientId = req.get('X-Client-Id') || '';
+  if (!clientId) { res.status(400).json({ error: 'clientId required' }); return; }
+  try { getQuestThreadStore().remove(clientId, String(req.params.id)); res.json({ ok: true }); }
+  catch { res.status(404).json({ error: '找不到这条支线，请刷新后重试' }); }
 });
 
 app.get('/api/profile', async (req, res) => {

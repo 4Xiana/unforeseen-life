@@ -37,7 +37,7 @@ await page.route('**/api/**', async route => {
     if (path.startsWith('/api/session/')) return route.fulfill({ json: saved });
     if (path === '/api/profile') return route.fulfill({ json: profile });
     if (path === '/api/handbook') return route.fulfill({ json: handbook });
-    if (path === '/api/quest-pairs' || path === '/api/goals') return route.fulfill({ json: [] });
+    if (path === '/api/quest-pairs' || path === '/api/goals' || path === '/api/quest-threads') return route.fulfill({ json: [] });
     return route.fulfill({ status: 404, json: {} });
   }
   const data = req.headers()['content-type']?.includes('application/json') ? req.postDataJSON() : null;

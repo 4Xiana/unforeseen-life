@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getClientId } from '../handbook';
 import './personal-library.css';
 
-export type LibraryTab = 'preferences' | 'goals' | 'handbook' | 'inspiration';
+export type LibraryTab = 'threads' | 'preferences' | 'goals' | 'handbook' | 'inspiration';
 const tabs: { id: LibraryTab; label: string; mark: string }[] = [
+  { id: 'threads', label: '支线脉络', mark: '⌁' },
   { id: 'preferences', label: '喜好', mark: '♡' },
   { id: 'goals', label: '心愿计划', mark: '✳' },
   { id: 'handbook', label: '日常记录', mark: '✧' },

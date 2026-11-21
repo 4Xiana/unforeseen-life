@@ -48,7 +48,7 @@ await page.route('**/api/**', async route => {
   if (pathname === '/api/handbook') return route.fulfill({ json: handbook });
   if (pathname === '/api/session/active') return route.fulfill({ json: null });
   if (pathname === '/api/quest-pairs') return route.fulfill({ json: pairs });
-  if (pathname === '/api/goals') return route.fulfill({ json: [] });
+  if (pathname === '/api/goals' || pathname === '/api/quest-threads') return route.fulfill({ json: [] });
   return route.fulfill({ status: 404, json: {} });
 });
 async function openFitting() {
