@@ -15,6 +15,8 @@ import { ConversationPanel } from './components/ConversationPanel';
 import { TaskWorkspace } from './components/TaskWorkspace';
 import { ThreadMapView } from './components/ThreadMapView';
 import './components/session-layout.css';
+import { DemoControls, type DemoAction } from './components/DemoControls';
+import { isDemoMode } from './demo/mode';
 
 /**
  * 可见视口高度（px）：手机软键盘弹起时 window.innerHeight / 100vh 不会缩短，
@@ -82,7 +84,7 @@ export default function App() {
     questPairs,
     saveUserProfile,
     fitUserProfile,
-  } = useAgentSession({ requestLocation: !onboarding.active });
+  } = useAgentSession({ requestLocation: !onboarding.active && !isDemoMode() });
   useFirstVisitGuide(onboarding, !isRestoring && profile !== null && handbook !== null, started || !!profile?.onboarded || (handbook?.stats.total ?? 0) > 0);
   const guideStepRef = useRef(onboarding.step);
   guideStepRef.current = onboarding.step;
@@ -150,6 +152,45 @@ export default function App() {
   };
 
   const isInputDisabled = isStreaming || isConnecting || isRestoring;
+  const demoTaskPending = useRef(false);
+  const demoRecommendPending = useRef(false);
+  useEffect(() => {
+    if (!demoRecommendPending.current || isInputDisabled || fsmState !== 'S0') return;
+    demoRecommendPending.current = false;
+    startNewSession('我想在家试一条有趣的支线，帮我推荐几件能做的小事吧');
+  }, [isInputDisabled, fsmState, startNewSession]);
+  useEffect(() => {
+    if (!demoTaskPending.current || isInputDisabled || fsmState !== 'S1' || !proposedActivities.length) return;
+    demoTaskPending.current = false;
+    selectActivity(proposedActivities[0].id);
+  }, [isInputDisabled, fsmState, proposedActivities, selectActivity]);
+  useEffect(() => {
+    if (!isDemoMode()) return;
+    const handle = (event: Event) => {
+      const action = (event as CustomEvent<{ action: DemoAction }>).detail?.action;
+      if (!action || action.startsWith('fill-') || action === 'fit-preview') return;
+      demoTaskPending.current = false;
+      demoRecommendPending.current = false;
+      if (action === 'onboarding') { openGuide(); return; }
+      if (onboarding.active) onboarding.close();
+      setAssistantOpen(false); setImmersive(false);
+      if (action === 'home') { setLibraryTab(null); setShowHome(true); return; }
+      if (['threads', 'preferences', 'goals', 'inspiration', 'handbook'].includes(action)) {
+        openLibrary(action as LibraryTab); return;
+      }
+      if (isInputDisabled) return;
+      setLibraryTab(null); setShowHome(false); setInputValue(''); setBrowseAfterCompletion(false);
+      if (action === 'task' && fsmState === 'S2') return;
+      if (action === 'task' && fsmState === 'S1' && proposedActivities.length) selectActivity(proposedActivities[0].id);
+      else {
+        demoTaskPending.current = action === 'task';
+        if (fsmState === 'S2') { demoRecommendPending.current = true; abandon(); }
+        else startNewSession('我想在家试一条有趣的支线，帮我推荐几件能做的小事吧');
+      }
+    };
+    window.addEventListener('xian-demo-action', handle);
+    return () => window.removeEventListener('xian-demo-action', handle);
+  });
   // 定位徽章：进应用即请求授权，仅在定位成功开启后出现，显示"城市 · 天气"（env_resolved 回传）
   const geoPlace = envInfo?.city || envInfo?.district || null;
   const geoWeather = envInfo?.weather
@@ -167,6 +208,7 @@ export default function App() {
         preferences={<PreferenceSheet embedded open compact onClose={() => onboarding.go(6)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onSaved={() => { if (guideStepRef.current === 5) onboarding.go(6); }} />}
         goals={<GoalsView embedded quickSetup onClose={() => onboarding.close('done')} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} onConfirmed={() => { if (guideStepRef.current === 6) onboarding.close('done'); }} />}
       />
+      <DemoControls busy={isInputDisabled} />
     </div>
   );
 
@@ -222,6 +264,7 @@ export default function App() {
           />}
         </div>}
       </div>}
+      <DemoControls busy={isInputDisabled} />
     </div>
   );
 }

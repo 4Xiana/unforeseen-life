@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { DemoSampleButton, useDemoAction } from '../demo/ui';
 import type { FSMState, TimelineItem } from '../types';
 import { ChatMessage } from './ChatMessage';
 import { ActivityCards } from './ActivityCards';
@@ -57,6 +58,7 @@ export function ConversationPanel(props: Props) {
     if (disabled || !text.trim()) return;
     voice.reset(); stickToBottom.current = true; onSend(text.trim()); onChange('');
   }
+  useDemoAction('fill-chat', () => onChange(onReturnToTask ? '可以给我一个简单的做法提示吗？' : '想探索点有趣的事，帮我推荐几条支线吧'));
   return <section ref={root} className={`conversation-panel ${onReturnToTask ? 'is-assistance' : ''}`} aria-label={onReturnToTask ? '和吱呀聊聊' : '与吱呀挑选支线'} role={onReturnToTask ? 'dialog' : undefined} aria-modal={onReturnToTask ? true : undefined} onKeyDown={e => {
     if (!onReturnToTask) return;
     if (e.key === 'Escape' && !e.nativeEvent.isComposing) { e.preventDefault(); e.stopPropagation(); onReturnToTask(); }
@@ -93,6 +95,8 @@ export function ConversationPanel(props: Props) {
       </div>
     </div>
     <form className="conversation-composer" onSubmit={e => { e.preventDefault(); send(); }}>
+      {onReturnToTask && <DemoSampleButton disabled={disabled} onClick={() => send('可以给我一个简单的做法提示吗？')}>演示：问问做法</DemoSampleButton>}
+      {!onReturnToTask && fsmState === 'S1' && <DemoSampleButton disabled={disabled} onClick={() => send('换一批')}>演示：换一批支线</DemoSampleButton>}
       {fsmState === 'S0' && !streaming && !onReturnToTask && <button type="button" className="conversation-quick-start session-secondary" onClick={() => send('想探索点有趣的事，先推荐一条15分钟能做的支线吧')}>没想好？先发现一条支线</button>}
       <div className="conversation-input"><input aria-label="和吱呀说说你的想法" value={value} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.nativeEvent.isComposing) e.preventDefault(); }} disabled={disabled} placeholder={voice.listening ? '正在聆听…' : onReturnToTask ? '遇到什么问题，和吱呀说说…' : fsmState === 'S1' ? '选一个，或者说说你的想法…' : '聊聊想探索什么，也可以说说你在哪儿…'} />{voice.supported && <VoiceButton listening={voice.listening} phase={voice.phase} error={voice.error} onToggle={voice.toggle} disabled={disabled} />}<button type="submit" className="conversation-send" disabled={disabled || !value.trim()} aria-label="发送消息"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden><path d="m3 10 14-7-5 14-3-6-6-1Zm6 1 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg></button></div>
       <VoiceStatus phase={voice.phase} error={voice.error} />

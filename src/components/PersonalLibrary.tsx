@@ -1,3 +1,4 @@
+import { appLocalStorage } from '../app-storage';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getClientId } from '../handbook';
 import './personal-library.css';
@@ -34,7 +35,7 @@ export function PersonalLibrary({ tab, onTabChange, onClose, onOpenGuide, needsP
   const key = `xian-library-guide-v1:${getClientId()}`;
   const guided = guide === 'preferences' || guide === 'goals';
   function remember(value: string) {
-    try { localStorage.setItem(key, value); } catch { /* continue in memory */ }
+    try { appLocalStorage.setItem(key, value); } catch { /* continue in memory */ }
   }
   function startGuide() {
     const next = needsPreferences ? 'preferences' : 'goals';

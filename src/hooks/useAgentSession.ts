@@ -1,3 +1,4 @@
+import { appLocalStorage } from '../app-storage';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, updateProfileFitting, fetchQuestPairs, fetchSavedSession } from '../api';
 import { restoreSessionView, type RestoredSession } from '../session-restore';
@@ -9,10 +10,10 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 function savedActiveSession(): string | undefined {
-  try { return localStorage.getItem('xian-active-session') || undefined; } catch { return undefined; }
+  try { return appLocalStorage.getItem('xian-active-session') || undefined; } catch { return undefined; }
 }
 function rememberActiveSession(id: string) {
-  try { localStorage.setItem('xian-active-session', id); } catch { /* storage unavailable */ }
+  try { appLocalStorage.setItem('xian-active-session', id); } catch { /* storage unavailable */ }
 }
 
 // 与后端"换一批"意图识别对齐：玩家明确表达重刷时，立即乐观渲染活动骨架屏

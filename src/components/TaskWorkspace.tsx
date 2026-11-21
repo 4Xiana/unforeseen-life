@@ -1,3 +1,4 @@
+import { appSessionStorage } from '../app-storage';
 import { useEffect, useRef, useState } from 'react';
 import type { ActivityPlan, FSMState, QuestProgress, StepReview, TimelineItem } from '../types';
 import type { QuestReward, GoalNotice } from '../hooks/useAgentSession';
@@ -50,7 +51,7 @@ export function TaskWorkspace(props: Props) {
   }, [stepKey, finished]);
   useEffect(() => {
     if (review?.verdict !== 'pass') return;
-    try { sessionStorage.removeItem(`${props.draftPrefix}:${review.stepIndex}`); } catch { /* optional local draft */ }
+    try { appSessionStorage.removeItem(`${props.draftPrefix}:${review.stepIndex}`); } catch { /* optional local draft */ }
   }, [review, props.draftPrefix]);
   let reply = '';
   for (let i = props.timeline.length - 1; i >= 0; i--) {

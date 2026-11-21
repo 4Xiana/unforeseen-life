@@ -1,3 +1,4 @@
+import { appSessionStorage } from '../app-storage';
 import { useEffect, useRef, useState } from 'react';
 import { getClientId } from '../handbook';
 import { PreferenceFittingPanel } from './PreferenceFittingPanel';
@@ -27,7 +28,7 @@ const draftKey = () => `xian-basic-preferences:${getClientId()}`;
 function readBasic(initial: UserProfile): SaveProfileInput {
   const base = { mbti: initial.mbti ?? null, activityPreference: initial.activityPreference ?? 'any', desiredOutcomes: initial.desiredOutcomes ?? [], energy: initial.energy, budget: initial.budget, social: initial.social, novelty: initial.novelty, mechs: initial.mechs, interests: initial.interests, avoids: initial.avoids };
   try {
-    const draft = JSON.parse(sessionStorage.getItem(draftKey()) || '{}');
+    const draft = JSON.parse(appSessionStorage.getItem(draftKey()) || '{}');
     const merged = { ...base, ...Object.fromEntries(Object.entries(draft).filter(([key]) => key in base)) };
     return { ...merged, ...normalizeIdentityPreferences(merged) };
   } catch { return base; }
@@ -44,7 +45,7 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
   const alive = useRef(true);
   const callback = useRef(onSaved); callback.current = onSaved;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  useEffect(() => { if (dirty) { try { sessionStorage.setItem(draftKey(), JSON.stringify(input)); } catch { /* in-memory editing still works */ } } }, [input, dirty]);
+  useEffect(() => { if (dirty) { try { appSessionStorage.setItem(draftKey(), JSON.stringify(input)); } catch { /* in-memory editing still works */ } } }, [input, dirty]);
   function change(patch: Partial<SaveProfileInput>) { setInput(prev => ({ ...prev, ...patch })); setDirty(true); setSaved(false); setError(''); }
   return <form className="basic-preferences" onSubmit={async e => {
     e.preventDefault(); if (saving) return;
@@ -52,7 +53,7 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
     try {
       // Only send basic fields. The independent fitting data is preserved by the server.
       await onSave(compact ? { ...input, energy: initial.energy, budget: initial.budget, social: initial.social, novelty: initial.novelty, mechs: initial.mechs, interests: initial.interests, avoids: initial.avoids } : input);
-      try { sessionStorage.removeItem(draftKey()); } catch { /* no draft */ }
+      try { appSessionStorage.removeItem(draftKey()); } catch { /* no draft */ }
       if (alive.current) { setDirty(false); setSaved(true); callback.current?.(); }
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : '暂时没能保存，请重试。'); }
     finally { if (alive.current) setSaving(false); }

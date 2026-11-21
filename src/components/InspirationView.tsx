@@ -1,7 +1,9 @@
+import { appLocalStorage } from '../app-storage';
 import { useEffect, useState } from 'react';
 import { API_BASE } from '../paths';
 import { getClientId } from '../handbook';
 import './inspiration.css';
+import { DemoSampleButton, useDemoAction } from '../demo/ui';
 
 interface InspirationTask {
   title: string; description: string; hook: string; tags: string[];
@@ -23,7 +25,7 @@ async function api<T>(route = '', method = 'GET', body?: unknown): Promise<T> {
   return response.status === 204 ? undefined as T : response.json();
 }
 function readDraft(key: string): { text: string; preview: Draft | null } {
-  try { return JSON.parse(localStorage.getItem(key) || 'null') || { text: '', preview: null }; }
+  try { return JSON.parse(appLocalStorage.getItem(key) || 'null') || { text: '', preview: null }; }
   catch { return { text: '', preview: null }; }
 }
 export function InspirationView() {
@@ -36,8 +38,10 @@ export function InspirationView() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
+  const fillSample = () => { setText('用散步时找到的三片叶子，做一张秋日拼贴，送给很久没见的朋友。'); setPreview(null); setNotice(''); };
+  useDemoAction('fill-inspiration', fillSample);
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify({ text, preview })); } catch { /* form remains usable */ }
+    try { appLocalStorage.setItem(key, JSON.stringify({ text, preview })); } catch { /* form remains usable */ }
   }, [text, preview, key]);
   async function load() {
     setLoading(true);
@@ -50,7 +54,7 @@ export function InspirationView() {
     setBusy(true); setError(''); setNotice('');
     try {
       const result = await api<Draft>('/extract', 'POST', { text });
-      try { localStorage.setItem(key, JSON.stringify({ text, preview: result })); } catch { /* continue */ }
+      try { appLocalStorage.setItem(key, JSON.stringify({ text, preview: result })); } catch { /* continue */ }
       setPreview(result);
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : '整理失败，你的输入已保留。'); }
@@ -63,7 +67,7 @@ export function InspirationView() {
       const saved = await api<Saved>('', 'POST', preview);
       setItems(current => [saved, ...current.filter(i => i.id !== saved.id)]);
       setText(''); setPreview(null); setNotice('✅ 灵感收好了。下次有合适的空闲，吱呀会想起它。');
-      try { localStorage.removeItem(key); } catch { /* continue */ }
+      try { appLocalStorage.removeItem(key); } catch { /* continue */ }
     } catch (cause) { setError(cause instanceof Error ? cause.message : '收藏失败，请重试。'); }
     finally { setBusy(false); }
   }
@@ -87,6 +91,7 @@ export function InspirationView() {
     </header>
     <form className="inspiration-form" onSubmit={e => { e.preventDefault(); void extract(); }}>
       <label htmlFor="inspiration-input">这次想留下什么灵感？</label>
+      <DemoSampleButton disabled={busy} onClick={fillSample}>填入示例灵感</DemoSampleButton>
       <textarea id="inspiration-input" value={text} maxLength={12000} rows={4} disabled={busy} placeholder="比如：用散步时找到的三片叶子，做一张秋日拼贴。也可以粘贴你在小红书、抖音上看到的文案或公开链接。" onChange={e => { setText(e.target.value); setPreview(null); setNotice(''); }} />
       <div className="inspiration-form-foot"><small>链接读不到时，粘贴正文也可以。</small><button className="inspiration-primary" disabled={busy || text.trim().length < 2}>{busy ? '正在整理…' : '让吱呀整理 →'}</button></div>
     </form>

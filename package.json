@@ -23,7 +23,9 @@
     "test:preferences:ui": "node tests/preference-fitting-check.mjs",
     "test:task-ui": "node tests/task-workspace-check.mjs",
     "test:threads": "server/node_modules/.bin/tsx --test tests/questThreads.test.ts tests/threadGraph.test.ts",
-    "test:threads:ui": "node tests/thread-map-check.mjs"
+    "test:threads:ui": "node tests/thread-map-check.mjs",
+    "test:demo": "server/node_modules/.bin/tsx --test tests/demoRuntime.test.ts",
+    "test:demo:ui": "node tests/demo-mode-check.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

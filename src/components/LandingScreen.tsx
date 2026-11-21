@@ -3,6 +3,7 @@ import { XianMascot } from './XianMascot';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 import { useSpeechHold } from '../hooks/useSpeechHold';
 import { VoiceStatus } from './VoiceButton';
+import { DemoSampleButton } from '../demo/ui';
 
 interface Props {
   onStart: (freeTime?: string) => void;
@@ -165,6 +166,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
 
       {/* ── 中部：语音 / 键盘 二态；矮屏时整区可滚动，绝不与底部按钮重叠 ── */}
       <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 overflow-y-auto scrollbar-hide">
+        <DemoSampleButton disabled={busy} onClick={() => onStart('我想在家试点有趣的事，帮我推荐几条支线吧')}>演示：帮我找一条支线</DemoSampleButton>
         {mode === 'voice' ? (
           <div key="voice" className="landing-voice-content min-h-full flex flex-col justify-start items-center pt-6 animate-fade-in">
             {/* 引导语 / 实时转写卡 */}

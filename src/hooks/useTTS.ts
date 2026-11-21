@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE } from '../paths';
 import { getClientId } from '../handbook';
+import { isDemoMode } from '../demo/mode';
+import { useDemoTTS } from '../demo/useDemoTTS';
 
 export interface TTSApi {
   supported: boolean;
@@ -16,6 +18,7 @@ export interface TTSApi {
 
 /** MiniMax audio queue. Generation guards prevent late responses after mute/exit. */
 export function useTTS(): TTSApi {
+  const deviceVoice = useDemoTTS();
   const supported = typeof Audio !== 'undefined';
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const queue = useRef<string[]>([]);
@@ -114,5 +117,5 @@ export function useTTS(): TTSApi {
     window.addEventListener('xian:microphone-start', cancel);
     return () => { document.removeEventListener('visibilitychange', hide); window.removeEventListener('pagehide', cancel); window.removeEventListener('xian:microphone-start', cancel); cancel(); };
   }, [cancel]);
-  return { supported, speaking, loading, error, currentSentence, feed, cancel, retry, unlock };
+  return isDemoMode() ? deviceVoice : { supported, speaking, loading, error, currentSentence, feed, cancel, retry, unlock };
 }

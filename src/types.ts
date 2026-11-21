@@ -109,6 +109,7 @@ export interface StepDetail {
 }
 
 export interface QuestRecord {
+  desiredOutcomes?: DesiredOutcome[];
   id: string;
   title: string;
   category: QuestCategory;

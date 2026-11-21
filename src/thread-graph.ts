@@ -1,10 +1,10 @@
 import type { ThreadRoute } from './thread-map';
-import type { QuestCategory, QuestRecord } from './types';
-import { CATEGORY_META, CATEGORY_ORDER } from './category-meta';
+import type { DesiredOutcome, QuestCategory, QuestRecord } from './types';
+import { OUTCOME_META, OUTCOME_ORDER, primaryOutcome, recordOutcomes } from './outcome-meta';
 
 export type ThreadGraphRelation = 'category' | 'custom';
 export interface ThreadGraphLane {
-  category: QuestCategory;
+  outcome: DesiredOutcome;
   label: string;
   color: string;
   /** Fraction of the drawing surface width, measured at the node center. */
@@ -14,6 +14,7 @@ export interface ThreadGraphNode {
   id: string;
   record: QuestRecord;
   category: QuestCategory;
+  outcome: DesiredOutcome;
   lane: number;
   x: number;
   y: number;
@@ -23,7 +24,7 @@ export interface ThreadGraphEdge {
   id: string;
   from: string;
   to: string;
-  /** Category means chronological order in one direction, never causality. */
+  /** The legacy category kind means chronological order in an outcome direction, never causality. */
   kinds: ThreadGraphRelation[];
   sourceIds: string[];
   sources: { id: string; kind: ThreadGraphRelation }[];
@@ -58,7 +59,7 @@ function compareRecords(a: QuestRecord, b: QuestRecord): number {
 /**
  * Layout of completed handbook records only. A record is one node even when it
  * belongs to several themes. Theme membership comes from explicit custom routes;
- * category links merely trace chronological order within a category. Goal chapter
+ * direction links merely trace chronological order within a desired outcome. Goal chapter
  * records have a separate identity and remain in the goal route detail: matching
  * a title or date is insufficient evidence that two records are the same task.
  *
@@ -70,9 +71,9 @@ export function buildThreadGraph(
   quests: QuestRecord[],
   options: { limit?: number } = {},
 ): ThreadGraph {
-  const lanes: ThreadGraphLane[] = CATEGORY_ORDER.map((category, index) => ({
-    category, label: CATEGORY_META[category].label, color: CATEGORY_META[category].color,
-    x: (index + 0.5) / CATEGORY_ORDER.length,
+  const lanes: ThreadGraphLane[] = OUTCOME_ORDER.map((outcome, index) => ({
+    outcome, label: OUTCOME_META[outcome].label, color: OUTCOME_META[outcome].color,
+    x: (index + 0.5) / OUTCOME_ORDER.length,
   }));
   // Duplicate transport entries cannot create duplicate nodes. Keep the canonical
   // first entry rather than merging evidence from potentially conflicting copies.
@@ -89,11 +90,11 @@ export function buildThreadGraph(
   const memberships = new Map<string, string[]>();
   const edgeByPair = new Map<string, ThreadGraphEdge>();
 
-  for (const route of [...routes].sort((a, b) => a.id.localeCompare(b.id))) {
+  for (const route of [...routes].sort((a, b) => Number(a.kind !== 'category') - Number(b.kind !== 'category') || a.id.localeCompare(b.id))) {
     const ids = route.kind === 'goal' ? [] : [...new Set(route.stops
       .filter(stop => stop.status === 'done' && !!stop.record && byId.has(stop.record.id))
       .map(stop => stop.record!.id))]
-      .filter(id => route.kind !== 'category' || byId.get(id)!.category === route.category)
+      .filter(id => route.kind !== 'category' || !!route.outcome && recordOutcomes(byId.get(id)!).includes(route.outcome))
       .sort((a, b) => compareRecords(byId.get(a)!, byId.get(b)!));
     routeRecordIds[route.id] = ids;
     const shown = ids.filter(id => visibleIds.has(id));
@@ -121,8 +122,9 @@ export function buildThreadGraph(
   }
 
   const nodes: ThreadGraphNode[] = visible.map((record, index) => {
-    const lane = CATEGORY_ORDER.indexOf(record.category);
-    return { id: record.id, record, category: record.category, lane, x: lanes[lane].x,
+    const outcome = primaryOutcome(record);
+    const lane = OUTCOME_ORDER.indexOf(outcome);
+    return { id: record.id, record, category: record.category, outcome, lane, x: lanes[lane].x,
       y: TOP_INSET + index * ROW_HEIGHT, routeIds: memberships.get(record.id) || [] };
   });
   return {

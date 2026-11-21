@@ -1,3 +1,4 @@
+import { appSessionStorage } from '../app-storage';
 import { useState, useRef, useEffect, useId } from 'react';
 import type { PublishedStep, SubmissionType } from '../types';
 import { VoiceButton, VoiceStatus } from './VoiceButton';
@@ -5,6 +6,8 @@ import { useSpeechInput } from '../hooks/useSpeechInput';
 import { StepTimer } from './StepTimer';
 import type { StepTimerApi } from '../hooks/useStepTimer';
 import { JourneyContext } from './JourneyContext';
+import { DemoSampleButton, useDemoAction } from '../demo/ui';
+import { demoStepSample } from '../demo/fixtures';
 
 // ── 步骤提交动作区：聊天任务卡与任务进度抽屉共用一套 ──
 // text=文字证物输入；photo=拍照 + 回答（两者齐备才放行）。
@@ -21,7 +24,7 @@ interface StepSubmitAreaProps {
 
 function readDraft(key?: string): { text?: string; answer?: string } {
   if (!key) return {};
-  try { return JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch { return {}; }
+  try { return JSON.parse(appSessionStorage.getItem(key) || '{}') || {}; } catch { return {}; }
 }
 
 export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, compact, draftKey }: StepSubmitAreaProps) {
@@ -34,11 +37,23 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
   const inputId = `task-photo-${useId()}`;
   const textVoice = useSpeechInput(textValue, setTextValue);
   const answerVoice = useSpeechInput(answerValue, setAnswerValue);
+  const fillSample = () => {
+    if (disabled) return;
+    const sample = demoStepSample(step.instruction);
+    if (step.submissionType === 'text') setTextValue(sample.text);
+    else {
+      const svg = decodeURIComponent(sample.photoUrl.slice(sample.photoUrl.indexOf(',') + 1));
+      const file = new File([svg], 'demo-sound-map.svg', { type: 'image/svg+xml' });
+      setPhotoFile(file); setPhotoUrl(URL.createObjectURL(file));
+      setAnswerValue(sample.text);
+    }
+  };
+  useDemoAction('fill-task', fillSample);
   useEffect(() => {
     if (!draftKey) return;
     try {
-      if (textValue || answerValue) sessionStorage.setItem(draftKey, JSON.stringify({ text: textValue, answer: answerValue }));
-      else sessionStorage.removeItem(draftKey);
+      if (textValue || answerValue) appSessionStorage.setItem(draftKey, JSON.stringify({ text: textValue, answer: answerValue }));
+      else appSessionStorage.removeItem(draftKey);
     } catch { /* input remains available in this page */ }
   }, [draftKey, textValue, answerValue]);
 
@@ -76,6 +91,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
   if (step.submissionType === 'text') {
     return (
       <div className="space-y-2">
+        <DemoSampleButton disabled={disabled} onClick={fillSample}>填入示例记录</DemoSampleButton>
         <div className="relative">
           <textarea
             aria-label="文字证物"
@@ -114,6 +130,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
   // photo：拍照/选图预览 + 文字回答，缺一不可提交
   return (
     <div className="space-y-3">
+      <DemoSampleButton disabled={disabled} onClick={fillSample}>填入示例照片</DemoSampleButton>
       <input
         ref={fileInputRef}
         type="file"

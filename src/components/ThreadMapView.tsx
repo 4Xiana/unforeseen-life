@@ -20,7 +20,7 @@ interface Props {
   onRetryRecords: () => void;
 }
 type Editor = ThreadInput & { id?: string };
-const sourceNames = { custom: '我的主题', goal: '心愿章节', category: '探索方向' };
+const sourceNames = { custom: '我的主题', goal: '心愿章节', category: '支线方向' };
 const stopNames = { done: '已完成', next: '下一站', active: '进行中', locked: '待解锁', planned: '待确认' };
 
 function RouteBranch({ route, onSelect }: { route: ThreadRoute; onSelect: () => void }) {

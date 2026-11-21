@@ -1,13 +1,15 @@
+import { appLocalStorage } from '../app-storage';
 import { useEffect, useRef, useState } from 'react';
 import { getClientId } from '../handbook';
 import type { PairAnswer, QuestPair, UserProfile, PreferenceFitting } from '../types';
+import { useDemoAction } from '../demo/ui';
 
 interface Draft { version: string; answers: Record<string, PairAnswer>; index: number }
 const draftKey = () => `xian-preference-fitting-v1:${getClientId()}`;
 const valid = (answer: unknown): answer is PairAnswer => typeof answer === 'string' && ['A', 'B', 'tie', 'skip'].includes(answer);
 function readDraft(): Draft | null {
   try {
-    const draft = JSON.parse(localStorage.getItem(draftKey()) || 'null');
+    const draft = JSON.parse(appLocalStorage.getItem(draftKey()) || 'null');
     if (draft?.version !== 'v1' || !draft.answers || typeof draft.answers !== 'object' || Array.isArray(draft.answers)) return null;
     return { ...draft, index: Number.isInteger(draft.index) && draft.index >= 0 ? draft.index : 0 };
   } catch { return null; }
@@ -46,6 +48,7 @@ export function PreferenceFittingPanel({ profile, pairs, onSave }: { profile: Us
   const known = cleaned(answers, pairs);
   const count = Object.keys(known).length;
   const sections = [...new Set(pairs.map(pair => pair.section || '玩法对比'))];
+  useDemoAction('fit-preview', () => { setResult(profile.fitting); setView('result'); });
   useEffect(() => { alive.current = true; return () => { alive.current = false; clearTimeout(timer.current); }; }, []);
   useEffect(() => {
     root.current?.querySelector<HTMLElement>('[data-fitting-heading]')?.focus({ preventScroll: true });
@@ -54,7 +57,7 @@ export function PreferenceFittingPanel({ profile, pairs, onSave }: { profile: Us
   useEffect(() => {
     if (view !== 'question' && view !== 'review') return;
     const next = { version: 'v1', answers: known, index: position };
-    try { localStorage.setItem(draftKey(), JSON.stringify(next)); setDraft(next); setStorageError(false); }
+    try { appLocalStorage.setItem(draftKey(), JSON.stringify(next)); setDraft(next); setStorageError(false); }
     catch { setStorageError(true); }
   }, [answers, index, view, pairs]);
   function start(reset: boolean) {
@@ -111,7 +114,7 @@ export function PreferenceFittingPanel({ profile, pairs, onSave }: { profile: Us
           const saved = await onSave(known);
           try {
             const current = readDraft();
-            if (current && JSON.stringify(cleaned(current.answers, pairs)) === JSON.stringify(known)) localStorage.removeItem(draftKey());
+            if (current && JSON.stringify(cleaned(current.answers, pairs)) === JSON.stringify(known)) appLocalStorage.removeItem(draftKey());
           } catch { /* no saved draft */ }
           if (alive.current) { setDraft(null); setResult(saved.fitting); setView('result'); }
         } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : '暂时没能保存，请重试。'); }

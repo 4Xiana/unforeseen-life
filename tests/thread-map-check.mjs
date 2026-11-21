@@ -74,7 +74,7 @@ async function nodeInView(node){
  });
  assert.equal(visible,true,'Closing details returns to a visible task node');
 }
-async function open(){await button('我的手册').click();await page.getByRole('tab',{name:'支线脉络'}).click();await branch('把想象变成作品').waitFor();await page.getByText('正在翻开你的探索地图…',{exact:true}).waitFor({state:'hidden'});}
+async function open(){await button('我的手册').click();await page.getByRole('tab',{name:'支线脉络'}).click();await branch('表达').waitFor();await page.getByText('正在翻开你的探索地图…',{exact:true}).waitFor({state:'hidden'});}
 async function layout(){
   await assertMobileShell(page);
  const data=await page.locator('.library-overlay').evaluate(root=>({overflow:root.scrollWidth>innerWidth+1,clipped:[...root.querySelectorAll('button,input,textarea')].filter(e=>e.getClientRects().length).some(e=>{const r=e.getBoundingClientRect();return r.left < -1||r.right>innerWidth+1;}),smallButtons:[...root.querySelectorAll('button')].filter(e=>e.getClientRects().length).some(e=>{const r=e.getBoundingClientRect();return r.width<43.5||r.height<43.5;})}));
@@ -91,6 +91,7 @@ try{
  const results=[];
  for(const [width,height]of [[320,568],[390,844],[844,390],[1280,900]]){
   await page.setViewportSize({width,height});await page.emulateMedia({reducedMotion:'reduce'});await layout();
+  assert.deepEqual(await page.locator('.thread-graph-lanes button').allTextContents(), ['放松','惊喜','表达','连接','成长']);
   // Records shared by a category and a theme remain one physical task node.
   const recordIds=await page.locator('.thread-graph-node').evaluateAll(nodes=>nodes.map(node=>node.dataset.recordId));
   assert.equal(recordIds.length,tasks.length);
@@ -187,7 +188,7 @@ try{
  await button('移除主题').click();await button('确认移除主题').click();await branch('认识我住的街区').waitFor();
  assert.equal(handbook.quests.length,7);
  assert.equal(await branch('日常的新视角').count(),0);
- await branch('重新认识日常物品').click();await page.getByText('这个方向还没有留下经历。',{exact:true}).waitFor();await button('← 返回地图').click();
+ await branch('成长').click();await page.getByText('这个方向还没有留下经历。',{exact:true}).waitFor();await button('← 返回地图').click();
  await branch('认识我住的街区').click();await button('沿这条线继续探索 →').click();
  await page.getByText('我们沿着这个方向继续，今天想在哪儿探索？',{exact:true}).waitFor();
  assert.match(messages.at(-1).text,/认识我住的街区/);assert.match(messages.at(-1).text,/街角的小店/);assert.match(messages.at(-1).text,/街区的三种声音/);
@@ -199,7 +200,7 @@ try{
  await page.getByText('先回到正在进行的任务，完成或放下后再探索。',{exact:true}).waitFor();
  activeSession=null;empty=true;await page.evaluate(()=>localStorage.removeItem('xian-active-session'));await page.reload({waitUntil:'domcontentloaded'});await open();
  await page.getByText('完成一次探索，点亮第一个节点',{exact:true}).waitFor();assert.equal(await page.locator('.thread-graph-node').count(),0);assert.equal(await button('串成一条支线').isDisabled(),true);
- await branch('把想象变成作品').click();assert.equal(await button('沿这条线继续探索 →').isEnabled(),true);
+ await branch('表达').click();assert.equal(await button('沿这条线继续探索 →').isEnabled(),true);
  await button('← 返回地图').click();await button('关闭我的手册').click();
  empty=false;failLoad=true;await open();await page.getByRole('alert').filter({hasText:'部分脉络暂时没能打开'}).waitFor();
  failLoad=false;await button('重新加载脉络').click();await branch('认识我住的街区').waitFor();

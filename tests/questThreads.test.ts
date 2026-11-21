@@ -43,10 +43,11 @@ test('跨分类的主题按真实时间连接，不凭标题合并，不修改�
   const thread = { id: 't', title: '我的街区', description: '记录声音', questIds: ['late', 'early', 'late', 'missing'], createdAt: '', updatedAt: '' };
   const routes = buildThreadRoutes(quests, [thread], []);
   assert.equal(routes.filter(r => r.kind === 'category').length, 5);
+  assert.deepEqual(routes.filter(r => r.kind === 'category').map(r => r.title), ['放松', '惊喜', '表达', '连接', '成长']);
   const custom = routes[0];
   assert.deepEqual(custom.stops.map(s => s.id), ['early', 'late']);
   assert.equal(custom.stops[0].record?.evidence, '早一点的真实作品');
-  assert.equal(routes.find(r => r.category === 'sense')?.stops.length, 1);
+  assert.equal(routes.find(r => r.outcome === 'relax')?.stops.length, 1);
   assert.deepEqual(quests.map(q => q.id), ['late', 'early']);
   assert.match(explorationPrompt(custom), /我的街区/);
   assert.match(explorationPrompt(custom), /记录声音/);

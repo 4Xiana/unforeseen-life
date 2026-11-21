@@ -1,3 +1,4 @@
+import { appLocalStorage } from './app-storage';
 import type { HandbookView } from './types';
 import { API_BASE } from './paths';
 
@@ -11,13 +12,13 @@ function uuid(): string {
   return 'c-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-/** 稳定的设备/玩家 id：首次访问生成，存 localStorage，之后复用 */
+/** 稳定的设备/玩家 id：首次访问生成，存 appLocalStorage，之后复用 */
 export function getClientId(): string {
   try {
-    let id = localStorage.getItem(CLIENT_ID_KEY);
+    let id = appLocalStorage.getItem(CLIENT_ID_KEY);
     if (!id) {
       id = uuid();
-      localStorage.setItem(CLIENT_ID_KEY, id);
+      appLocalStorage.setItem(CLIENT_ID_KEY, id);
     }
     return id;
   } catch {
@@ -28,7 +29,7 @@ export function getClientId(): string {
 export function saveClientId(id: string) {
   volatileClientId = id;
   try {
-    localStorage.setItem(CLIENT_ID_KEY, id);
+    appLocalStorage.setItem(CLIENT_ID_KEY, id);
   } catch {
     /* ignore */
   }

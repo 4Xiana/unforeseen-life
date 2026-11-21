@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../paths';
+import { isDemoMode } from '../demo/mode';
 
 type TraceEventType =
   | 'session_created'
@@ -459,6 +460,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
   }
 
   function connectLive() {
+    if (isDemoMode()) return;
     const es = new EventSource(`${API_BASE}/trace/live`);
     es.onopen = () => setConnected(true);
     es.onerror = () => {
@@ -512,7 +514,7 @@ export function TraceDashboard({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <h1 className="font-display text-ink text-lg leading-none">Agent 轨迹追踪</h1>
-              <p className="text-[10px] font-mono text-fog tracking-wider mt-0.5">TRACE DASHBOARD</p>
+              <p className="text-[10px] font-mono text-fog tracking-wider mt-0.5">{isDemoMode() ? '演示模式 · 不连接真实日志' : 'TRACE DASHBOARD'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

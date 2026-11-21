@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SpeechInputController, type RecognitionConstructor, type SpeechPhase } from '../speechRecognition';
+import { isDemoMode } from '../demo/mode';
 
 function getRecognitionCtor(): RecognitionConstructor | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || isDemoMode()) return null;
   const w = window as unknown as {
     SpeechRecognition?: RecognitionConstructor;
     webkitSpeechRecognition?: RecognitionConstructor;

@@ -1,7 +1,7 @@
 import type { Goal } from '../server/goals-types';
 import type { QuestThread } from './threads-api';
-import type { QuestRecord, QuestCategory } from './types';
-import { CATEGORY_META, CATEGORY_ORDER } from './category-meta';
+import type { QuestRecord, DesiredOutcome } from './types';
+import { OUTCOME_META, OUTCOME_ORDER, recordOutcomes } from './outcome-meta';
 
 export interface ThreadStop {
   id: string;
@@ -18,20 +18,10 @@ export interface ThreadRoute {
   description: string;
   color: string;
   stops: ThreadStop[];
-  category?: QuestCategory;
+  outcome?: DesiredOutcome;
   thread?: QuestThread;
   goal?: Goal;
 }
-export const directionNames: Record<QuestCategory, string> = {
-  explore: '发现身边的新鲜事', organize: '重新认识日常物品', create: '把想象变成作品', connect: '与人和记忆相遇', sense: '打开感官去感受',
-};
-const directionDescriptions: Record<QuestCategory, string> = {
-  explore: '换条路走走，看看身边还有什么新发现。',
-  organize: '和日常物品重新打个招呼，给生活腾一点空间。',
-  create: '用一点点想象，留下自己的作品。',
-  connect: '聊聊、写写，让人与记忆靠近一点。',
-  sense: '听一听、闻一闻，留意那些平时错过的小细节。',
-};
 const doneStops = (quests: QuestRecord[]): ThreadStop[] => [...quests]
   .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
   .map(record => ({ id: record.id, title: record.title, record, status: 'done' }));
@@ -56,10 +46,10 @@ export function buildThreadRoutes(quests: QuestRecord[], threads: QuestThread[],
       };
     }),
   }));
-  const categories: ThreadRoute[] = CATEGORY_ORDER.map(category => ({
-    id: `category:${category}`, kind: 'category', category, title: directionNames[category],
-    description: directionDescriptions[category],
-    color: CATEGORY_META[category].color, stops: doneStops(quests.filter(q => q.category === category)),
+  const categories: ThreadRoute[] = OUTCOME_ORDER.map(outcome => ({
+    id: `outcome:${outcome}`, kind: 'category', outcome, title: OUTCOME_META[outcome].label,
+    description: OUTCOME_META[outcome].description,
+    color: OUTCOME_META[outcome].color, stops: doneStops(quests.filter(q => recordOutcomes(q).includes(outcome))),
   }));
   return [...custom, ...wishes, ...categories];
 }
