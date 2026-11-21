@@ -8,6 +8,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
 const page = await browser.contexts()[0].newPage();
 page.setDefaultTimeout(12000);
+// External font availability must not block local interaction and screenshot checks.
+await page.route(/https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)\//, route => route.abort());
 const base = process.env.ONBOARDING_TEST_URL || 'http://localhost:8801';
 const output = '.cache/onboarding';
 mkdirSync(output, { recursive: true });
@@ -63,7 +65,8 @@ async function layout() {
       footerVisible: footer.top >= 0 && footer.bottom <= innerHeight + 1,
       skipVisible: skip.top >= 0 && skip.bottom <= innerHeight + 1,
       clipped: [...root.querySelectorAll('button,input,textarea')].filter(e => e.getClientRects().length).some(e => { const r = e.getBoundingClientRect(); return r.left < -1 || r.right > innerWidth + 1; }),
-      smallTarget: [...root.querySelectorAll('button,summary')].filter(e => e.getClientRects().length).some(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }),
+      // Translated page-entry animations can produce 43.999999px bounding boxes.
+      smallTarget: [...root.querySelectorAll('button,summary')].filter(e => e.getClientRects().length).some(e => { const r = e.getBoundingClientRect(); return r.height < 43.5 || r.width < 43.5; }),
     };
   });
   assert.deepEqual(result, { overflow: false, footerVisible: true, skipVisible: true, clipped: false, smallTarget: false });

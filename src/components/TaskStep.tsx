@@ -16,18 +16,31 @@ interface StepSubmitAreaProps {
   onSubmitPhoto: (file: File, description: string) => void;
   disabled?: boolean;
   compact?: boolean;
+  draftKey?: string;
 }
 
-export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, compact }: StepSubmitAreaProps) {
-  const [textValue, setTextValue] = useState('');
+function readDraft(key?: string): { text?: string; answer?: string } {
+  if (!key) return {};
+  try { return JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch { return {}; }
+}
+
+export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, compact, draftKey }: StepSubmitAreaProps) {
+  const [textValue, setTextValue] = useState(() => { const text = readDraft(draftKey).text; return typeof text === 'string' ? text : ''; });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [answerValue, setAnswerValue] = useState('');
+  const [answerValue, setAnswerValue] = useState(() => { const answer = readDraft(draftKey).answer; return typeof answer === 'string' ? answer : ''; });
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 聊天卡与抽屉可能同时挂载，useId 保证各自的 <input>/<label> 配对不串
   const inputId = `task-photo-${useId()}`;
   const textVoice = useSpeechInput(textValue, setTextValue);
   const answerVoice = useSpeechInput(answerValue, setAnswerValue);
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      if (textValue || answerValue) sessionStorage.setItem(draftKey, JSON.stringify({ text: textValue, answer: answerValue }));
+      else sessionStorage.removeItem(draftKey);
+    } catch { /* input remains available in this page */ }
+  }, [draftKey, textValue, answerValue]);
 
   // 照片预览的 object URL 在换图/卸载时释放，避免泄漏
   useEffect(() => {
@@ -69,7 +82,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
             value={textValue}
             onChange={e => setTextValue(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 handleTextSubmit();
               }
@@ -113,7 +126,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
       />
 
       {!photoUrl ? (
-        <label htmlFor={inputId} className={`block ${disabled ? 'pointer-events-none' : ''}`}>
+        <button type="button" aria-label="拍照或选择照片" onClick={() => fileInputRef.current?.click()} disabled={disabled} className="block w-full">
           <div className={`w-full border-2 border-dashed border-fog-light rounded-2xl bg-paper/60 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-moss/60 hover:bg-paper transition-all duration-200 ${disabled ? 'opacity-50' : ''} ${compact ? 'py-5' : 'py-8'}`}>
             <svg width={compact ? 24 : 28} height={compact ? 19 : 22} viewBox="0 0 28 22" fill="none" className="text-fog">
               <rect x="1" y="3" width="26" height="18" rx="3" stroke="currentColor" strokeWidth="1.3"/>
@@ -121,10 +134,10 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
               <circle cx="21" cy="7" r="1" fill="currentColor"/>
               <path d="M1 16L6 12L11 16L17 11L23 15L27 12" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" opacity="0.5"/>
             </svg>
-            <span className="font-hand text-fog text-[15px]">点击拍照记录</span>
-            <span className="text-[11px] text-fog/70">需要使用相机</span>
+            <span className="font-hand text-fog text-[15px]">拍照或选择照片</span>
+            <span className="text-[11px] text-fog/70">留下你眼前真实的发现</span>
           </div>
-        </label>
+        </button>
       ) : (
         <div className="relative rounded-2xl overflow-hidden border border-fog-light bg-paper">
           <img src={photoUrl} alt="待提交的现场照片" className={`w-full ${compact ? 'max-h-44' : 'max-h-60'} object-cover`} />
@@ -146,7 +159,7 @@ export function StepSubmitArea({ step, onSubmitText, onSubmitPhoto, disabled, co
           value={answerValue}
           onChange={e => setAnswerValue(e.target.value)}
           onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
               e.preventDefault();
               handlePhotoSubmit();
             }

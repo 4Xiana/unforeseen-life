@@ -18,7 +18,8 @@
     "preview:backend": "PORT=5184 npm --prefix server run dev",
     "preview:local": "npm run build:deploy && concurrently --kill-others -n server,web -c cyan,yellow \"npm:preview:backend\" \"npm:preview\"",
     "test:preferences": "server/node_modules/.bin/tsx --test tests/preferenceFitting.test.ts",
-    "test:preferences:ui": "node tests/preference-fitting-check.mjs"
+    "test:preferences:ui": "node tests/preference-fitting-check.mjs",
+    "test:task-ui": "node tests/task-workspace-check.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

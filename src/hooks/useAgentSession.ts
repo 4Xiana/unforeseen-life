@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, updateProfileFitting, fetchQuestPairs, fetchSavedSession } from '../api';
 import { restoreSessionView, type RestoredSession } from '../session-restore';
-import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo, UserProfile, SaveProfileInput, QuestPair } from '../types';
+import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo, UserProfile, SaveProfileInput, QuestPair, StepReview } from '../types';
 import { getClientId, saveClientId, fetchHandbook } from '../handbook';
 import { useGeolocation, type GeoCoords } from './useGeolocation';
 
@@ -56,12 +56,15 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
   const [questPairs, setQuestPairs] = useState<QuestPair[]>([]);
   const [reward, setReward] = useState<QuestReward | null>(null);
   const [goalNotice, setGoalNotice] = useState<GoalNotice | null>(null);
-  // 当前支线任务进度：步骤卡在瀑布流里会被刷上去，抽屉靠这份聚合数据常驻展示
+  // 当前支线任务进度：任务页按这份聚合数据展示当前步骤与已完成步骤
   const [quest, setQuest] = useState<QuestProgress | null>(null);
-  // 已经走完/放弃的支线：抽屉时间轴里逐条累积，挑选→进行→完成全程可回溯
+  // 已经走完/放弃的支线：逐条归档，用于会话恢复与任务轮次区分
   const [questHistory, setQuestHistory] = useState<ArchivedQuest[]>([]);
-  // 最新一批待选支线（S1）：任务板抽屉在选任务阶段直接展示/选择，不必翻聊天
+  // 最新一批待选支线（S1）：在主对话内选择，选中后切换任务页
   const [proposedActivities, setProposedActivities] = useState<ActivityPlan[]>([]);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityPlan | null>(null);
+  const [stepReview, setStepReview] = useState<StepReview | null>(null);
+  const [lastAction, setLastAction] = useState('text');
   // 后端解析出的玩家环境（城市/天气），由 env_resolved 事件回传，供 header 定位徽章展示
   const [envInfo, setEnvInfo] = useState<EnvInfo | null>(null);
   // 定位：授权后 watch 持续刷新坐标，随每条消息上行，后端据此解析城市/天气默认注入上下文
@@ -272,6 +275,10 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
             setQuestHistory(prev => [...prev, { id: questKeyRef.current, title: q.title, total: q.total, steps: q.steps, status: 'abandoned', at: Date.now() }]);
             setQuest(null);
           }
+          questRef.current = null;
+          setQuest(null);
+          setSelectedActivity(null);
+          setStepReview(null);
         }
         if (to === 'S1') {
           // 活动卡片待生成：先挂起，等 Agent 输出引导文字后再放行骨架屏
@@ -284,6 +291,10 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
             archivedQuestRef.current = questKeyRef.current;
             setQuestHistory(prev => [...prev, { id: questKeyRef.current, title: q.title, total: q.total, steps: q.steps, status: 'abandoned', at: Date.now() }]);
           }
+          questRef.current = null;
+          setQuest(null);
+          setSelectedActivity(null);
+          setStepReview(null);
         }
         if (to === 'S2') {
           newQuestRef.current = true;
@@ -350,6 +361,12 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
         setSteppingText(null);
         setUiPending(null);
         setUiOptimistic(null);
+        break;
+      }
+
+      case 'evidence_reviewed': {
+        const review = event.review as { available?: boolean; verdict?: string; reason?: string; whatNeeded?: string } | undefined;
+        if (review?.available && (review.verdict === 'pass' || review.verdict === 'reject')) setStepReview({ stepIndex: Number(event.stepIndex), verdict: review.verdict, reason: review.reason || '', whatNeeded: review.whatNeeded || '' });
         break;
       }
 
@@ -446,6 +463,9 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     archivedQuestRef.current = view.questHistory.some(q => q.id === view.quest?.id) ? view.quest?.id || '' : '';
     setQuestHistory(view.questHistory);
     setProposedActivities(view.proposedActivities);
+    setSelectedActivity(saved.snapshot.selectedActivity);
+    setStepReview(view.stepReview);
+    setLastAction('restore');
     setEnvInfo(view.envInfo);
     setCompleted(false);
     setReward(null);
@@ -505,6 +525,8 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     archivedQuestRef.current = '';
     setQuestHistory([]);
     setProposedActivities([]);
+    setSelectedActivity(null);
+    setStepReview(null);
     setCompleted(false);
     setReward(null);
     restoreSessionIdRef.current = undefined;
@@ -530,16 +552,15 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     // 步骤实际耗时（秒），仅 submit_text 由软计时器带上
     elapsedSeconds?: number;
   }) => {
-    if (!sessionId) return;
+    if (!sessionId || activeRequestRef.current) return;
 
-    if (activeRequestRef.current && abortRef.current) {
-      abortRef.current.abort();
-    }
     const ac = new AbortController();
     abortRef.current = ac;
     activeRequestRef.current = true;
 
     setIsStreaming(true);
+    setLastAction(params.type);
+    if (params.type === 'submit_text' || params.type === 'select_activity') setStepReview(null);
     setError(null);
     setCompleted(false);
     setGoalNotice(null);
@@ -587,38 +608,40 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
       if (msg.includes('409')) { retryRestore(); return; }
       setError(msg);
       setIsStreaming(false);
+      setUiOptimistic(null);
+      setUiPending(null);
     } finally {
       activeRequestRef.current = false;
     }
   }, [sessionId, pushUserText, retryRestore]);
 
   const sendText = useCallback((text: string) => {
-    if (isStreaming || !text.trim()) return;
+    if (isStreaming || activeRequestRef.current || !text.trim()) return;
     doSend({ type: 'text', text });
   }, [isStreaming, doSend]);
 
   const selectActivity = useCallback((activityId: string) => {
-    if (isStreaming) return;
+    if (isStreaming || activeRequestRef.current) return;
+    setSelectedActivity(proposedActivities.find(activity => activity.id === activityId) || null);
     doSend({ type: 'select_activity', activityId });
-  }, [isStreaming, doSend]);
+  }, [isStreaming, doSend, proposedActivities]);
 
   const submitText = useCallback((text: string, elapsedSeconds?: number) => {
-    if (isStreaming || !text.trim()) return;
+    if (isStreaming || activeRequestRef.current || !text.trim()) return;
     pushUserText(text);
     doSend({ type: 'submit_text', text, showUserMessage: false, elapsedSeconds });
   }, [isStreaming, doSend, pushUserText]);
 
   const submitPhoto = useCallback(async (file: File, description: string, elapsedSeconds?: number) => {
-    if (isStreaming || !sessionId) return;
+    if (isStreaming || activeRequestRef.current || !sessionId) return;
 
-    if (activeRequestRef.current && abortRef.current) {
-      abortRef.current.abort();
-    }
     const ac = new AbortController();
     abortRef.current = ac;
     activeRequestRef.current = true;
 
     setIsStreaming(true);
+    setLastAction('submit_photo');
+    setStepReview(null);
     setError(null);
 
     const objectUrl = URL.createObjectURL(file);
@@ -695,6 +718,9 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     quest,
     questHistory,
     proposedActivities,
+    selectedActivity,
+    stepReview,
+    lastAction,
     envInfo,
     geoSupported: geo.supported,
     geoStatus: geo.status,

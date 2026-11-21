@@ -23,7 +23,8 @@ export function OnboardingSceneTry({ scene: _scene, onComplete }: { scene: 'home
       {phase === 'pick' ? <button className="walk-primary" onClick={() => setPhase('submit')}>就选这条支线 →</button> : <span className="quick-demo-selected">✓ 已选择</span>}
     </div>
     {phase !== 'pick' && <div className="quick-demo-proof" aria-live="polite">
-      <h2>跟着步骤，做点小事</h2>
+      <h2>选好了，在任务页跟着做</h2>
+      <p>步骤和提交入口都在这里。卡住时，点「问问吱呀」，聊完回到这一步。</p>
       <p id="quick-demo-instruction">挑两件手边的小物，摆在一起。给展览起个名字，写一句它们为什么在一起。</p>
       <div className="quick-demo-work"><span>示例作品</span><blockquote>《下班了》：钥匙和合上的笔记本，一个结束奔波，一个收起待办，一起休息。</blockquote></div>
       {phase === 'submit' ? <button data-demo-current aria-describedby="quick-demo-instruction" className="walk-primary" onClick={() => { setPhase('saved'); onComplete(); }}>提交这份示例作品 →</button>

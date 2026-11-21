@@ -11,6 +11,8 @@ assert.equal(pairs.length, 30);
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
 const page = await browser.contexts()[0].newPage();
 page.setDefaultTimeout(12000);
+// External font availability must not block local interaction and screenshot checks.
+await page.route(/https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)\//, route => route.abort());
 const client = `fitting-fixture-${Date.now()}`;
 const key = `xian-preference-fitting-v1:${client}`;
 const guideKey = `xian-app-guide-v1:${client}`;

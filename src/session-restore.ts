@@ -1,4 +1,4 @@
-import type { ActivityPlan, ArchivedQuest, EnvInfo, FSMState, PublishedStep, QuestProgress, SSEEvent, TimelineItem } from './types';
+import type { ActivityPlan, ArchivedQuest, EnvInfo, FSMState, PublishedStep, QuestProgress, SSEEvent, TimelineItem, StepReview } from './types';
 
 export interface RestoredSession {
   sessionId: string;
@@ -22,6 +22,7 @@ export function restoreSessionView(saved: RestoredSession) {
   let envInfo: EnvInfo | null = null;
   let npc: Extract<TimelineItem, { kind: 'user' | 'npc' }> | null = null;
   let freshQuest = false;
+  let stepReview: StepReview | null = null;
   const archive = (status: 'done' | 'abandoned', at: number) => {
     if (!quest?.id || questHistory.some(q => q.id === quest!.id)) return;
     questHistory.push({ ...quest, id: quest.id, status, at });
@@ -48,9 +49,15 @@ export function restoreSessionView(saved: RestoredSession) {
         if (e.to === 'S0' || e.to === 'S1') {
           archive('abandoned', at);
           quest = null;
+          stepReview = null;
         }
         if (e.to === 'S2') freshQuest = true;
         break;
+      case 'evidence_reviewed': {
+        const review = e.review as { available?: boolean; verdict?: string; reason?: string; whatNeeded?: string } | undefined;
+        if (review?.available && (review.verdict === 'pass' || review.verdict === 'reject')) stepReview = { stepIndex: Number(e.stepIndex), verdict: review.verdict, reason: review.reason || '', whatNeeded: review.whatNeeded || '' };
+        break;
+      }
       case 'step_published': {
         const step = e.step as PublishedStep;
         timeline.push({ id: key, kind: 'step', step, total: Number(e.total), timestamp: at });
@@ -81,7 +88,7 @@ export function restoreSessionView(saved: RestoredSession) {
   }
   return {
     timeline: timeline.filter(it => it.kind !== 'npc' || it.content.length > 0),
-    quest, questHistory, proposedActivities: snapshot.proposedActivities || proposedActivities,
+    quest, questHistory, stepReview, proposedActivities: snapshot.proposedActivities || proposedActivities,
     envInfo, fsmState: snapshot.fsmState,
   };
 }

@@ -46,17 +46,24 @@ export interface ChatMessage {
   imageUrl?: string;
 }
 
-// 当前支线的任务进度（由 step_published 事件聚合，供任务进度抽屉使用）：
+// 当前支线的任务进度（由 step_published 事件聚合，供任务页使用）：
 // steps 按发布顺序累积，total 是设计的总步数；新支线从 step.index=0 重新开始
 export interface QuestProgress {
-  // 支线实例 id（新支线 step0 时生成）：抽屉据此把"当前支线"与历史归档去重
+  // 支线实例 id（新支线发布步骤时生成）：用于当前支线与历史归档去重
   id?: string;
   title: string;
   total: number;
   steps: PublishedStep[];
 }
 
-// 已结束的支线（走完归档 / 中途放弃）：抽屉时间轴里作为历史节点累积保留
+export interface StepReview {
+  stepIndex: number;
+  verdict: 'pass' | 'reject';
+  reason: string;
+  whatNeeded: string;
+}
+
+// 已结束的支线（走完归档 / 中途放弃）：作为会话历史节点累积保留
 export interface ArchivedQuest {
   id: string;
   title: string;

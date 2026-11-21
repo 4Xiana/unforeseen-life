@@ -112,6 +112,24 @@ test('推进后尚未发布卡片时中断，可恢复当前步骤入口', () =>
   assert.equal(view.timeline[0].kind, 'step');
 });
 
+test('刷新恢复补充要求；重新挑选时不把旧任务或退回提示带入新任务', () => {
+  const state = snapshot();
+  const step = { index: 0, instruction: '列出三种声音', submissionType: 'text' as const };
+  const events = [
+    { type: 'state_changed', to: 'S2' },
+    { type: 'step_published', step, total: 2, activityTitle: '声音收藏' },
+    { type: 'evidence_reviewed', stepIndex: 0, review: { available: true, verdict: 'reject', reason: '还差一种', whatNeeded: '再补一种你听见的声音' } },
+    { type: 'step_published', step, total: 2, activityTitle: '声音收藏' },
+  ].map((event, id) => ({ id, at: id, event }));
+  const rejected = restoreSessionView({ sessionId: 's1', clientId: 'u1', status: 'idle', snapshot: { ...state, currentStepIndex: 0 }, events });
+  assert.equal(rejected.quest?.steps.length, 1);
+  assert.equal(rejected.stepReview?.whatNeeded, '再补一种你听见的声音');
+  const repick = restoreSessionView({ sessionId: 's1', clientId: 'u1', status: 'idle', snapshot: { ...state, fsmState: 'S1', selectedActivity: null }, events: [...events, { id: 4, at: 4, event: { type: 'state_changed', to: 'S1' } }] });
+  assert.equal(repick.quest, null);
+  assert.equal(repick.stepReview, null);
+  assert.equal(repick.questHistory[0].status, 'abandoned');
+});
+
 test('实际 HTTP 服务重启后仍返回会话，读写接口拒绝其他用户', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'xian-http-'));
   const store = new SessionStore(path.join(dir, 'sessions.sqlite'));
