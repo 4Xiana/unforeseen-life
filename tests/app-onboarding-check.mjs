@@ -88,7 +88,7 @@ try {
     assert.equal(await page.locator('.guide-narration').count(), 0, 'No timed captions');
     await button('一起试试 →').click(); await step(2); await layout();
     await button('我想试试这个 →').click(); await layout();
-    await button('试着留下这份小作品 →').click();
+    await button('试着留下这次练习 →').click();
     await page.getByRole('status').filter({ hasText: '一次小小的探索，完成啦' }).waitFor();
     await layout();
     await button('聊聊我的喜好 →').click(); await step(3); await layout();
