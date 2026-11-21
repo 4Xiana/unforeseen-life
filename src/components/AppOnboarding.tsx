@@ -5,7 +5,6 @@ import './app-onboarding.css';
 
 // Preserve existing stored form IDs; 4 now opens the short demonstration.
 const pageSteps = [0, 4, 5, 6];
-const labels = ['认识吱呀', '试一试', '你的喜好', '小小心愿'];
 
 export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goals }: {
   step: number;
@@ -33,34 +32,31 @@ export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goa
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
   }}>
     <div className="app-guide-book">
-      <header className="app-guide-top"><span>你好，我是吱呀</span><button onClick={onSkip}>稍后再看</button></header>
+      <header className="app-guide-top">
+        <span>{pageIndex + 1} / 4</span>
+        <nav aria-label="教程导航">{pageIndex > 0 && <button onClick={() => onStep(pageSteps[pageIndex - 1])}>上一步</button>}<button onClick={onSkip}>稍后再看</button></nav>
+      </header>
       <div className="app-guide-progress" aria-label={`应用引导，第 ${pageIndex + 1} 页，共 4 页`}>
         {pageSteps.map((id, index) => <i key={id} className={index <= pageIndex ? 'filled' : ''} />)}
       </div>
-      <div className="quick-guide-location"><span>{String(pageIndex + 1).padStart(2, '0')} / 04 · {labels[pageIndex]}</span>{pageIndex > 0 && <button onClick={() => onStep(pageSteps[pageIndex - 1])}>上一步</button>}</div>
       <div ref={body} className="app-guide-body">
         <div className="app-guide-page" key={step}>
           {step === 0 && <div className="quick-guide-intro">
             <XianMascot size={112} />
-            <p className="quick-guide-eyebrow">日常里，也有意想不到的小乐趣</p>
-            <h1 id="app-guide-title" tabIndex={-1}>跟着好奇，<br />试点新鲜事。</h1>
-            <p>和吱呀聊聊，找件有意思的小事。<br />还没想好？一起找找也可以。</p>
-            <div className="quick-guide-example"><span>比如，你对吱呀说</span><p>“想在家试点有创意的事。”</p><strong>给桌上的小物办个展 →</strong></div>
-
+            <h1 id="app-guide-title" tabIndex={-1}>和吱呀聊聊，发现想尝试的小事。</h1>
+            <p className="quick-guide-description">没想法也没关系，一起找找。</p>
           </div>}
           {step === 4 && <>
-            <h1 id="app-guide-title" tabIndex={-1}>一起试一条支线</h1>
-            <p className="quick-guide-description">挑个点子，跟着做，再留下自己的小收获。</p>
+            <h1 id="app-guide-title" tabIndex={-1}>挑件小事，跟着做，再留下收获。</h1>
             <OnboardingSceneTry scene="home" onComplete={() => setSceneCompleted(true)} />
           </>}
           {step === 5 && <>
-            <h1 id="app-guide-title" tabIndex={-1}>分享你的喜好，<br />让吱呀更了解你</h1>
+            <h1 id="app-guide-title" tabIndex={-1}>分享你的喜好，让吱呀更了解你。</h1>
             <p className="quick-guide-description">随心选选，不确定也可以跳过。</p>
             <div className="app-guide-real-form">{preferences}</div>
           </>}
           {step === 6 && <>
             <h1 id="app-guide-title" tabIndex={-1}>有什么一直想试试？</h1>
-            <p className="quick-guide-description">画画、做饭，或是认识身边的街区。先留个小心愿吧。</p>
             <div className="app-guide-real-form">{goals}</div>
           </>}
         </div>

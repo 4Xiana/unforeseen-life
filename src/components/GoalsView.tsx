@@ -148,7 +148,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
       confirmedCallback.current?.();
     } catch { setError('这次没能存好，可以先复制下来，稍后再试。'); }
   }}>
-    <label htmlFor="quick-wish-input">想试试的事<textarea id="quick-wish-input" required minLength={2} maxLength={500} rows={2} value={input.wish} placeholder="比如：重新捡起画画" onChange={e => { setInput({ ...input, wish: e.target.value }); setError(''); }} /></label>
+    <label htmlFor="quick-wish-input"><span className="sr-only">想试试的事</span><textarea id="quick-wish-input" required minLength={2} maxLength={500} rows={2} value={input.wish} placeholder="比如：重新捡起画画" onChange={e => { setInput({ ...input, wish: e.target.value }); setError(''); }} /></label>
     <div className="quick-wish-seeds" aria-label="心愿灵感">{['重新捡起画画', '找到自己的拿手菜', '做一本街区观察册'].map(wish => <button type="button" key={wish} aria-pressed={input.wish === wish} onClick={() => { setInput({ ...input, wish }); setError(''); }}>{wish}</button>)}</div>
     <p className="quick-guide-footnote">会先记在这台设备上，之后去「心愿计划」慢慢安排。</p>
     <button className="walk-primary quick-form-submit" type="submit">记下来，出发吧 →</button>
