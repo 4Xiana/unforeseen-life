@@ -1,0 +1,248 @@
+.app-guide {
+  --guide-font: "LXGW WenKai", "Noto Sans SC", sans-serif;
+  --guide-surface: #fffdf8;
+  --guide-selected: #edf1e2;
+  width: 100%; height: 100%; min-width: 0; min-height: 0; display: grid; place-items: center;
+  padding: 22px; background: var(--paper); color: var(--ink); overflow: hidden; outline: none;
+  font-family: var(--guide-font); font-size: 16px; line-height: 1.7;
+}
+/* The embedded forms use the same type system as the surrounding guide. */
+.app-guide :is(h1,h2,h3,p,span,strong,small,label,input,textarea,select,button,summary,blockquote) { font-family: var(--guide-font); }
+.app-guide-book { width: min(100%, 480px); min-width: 0; max-height: 100%; height: 740px; display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 24px; overflow: hidden; }
+.app-guide button { min-width: 44px; min-height: 44px; touch-action: manipulation; }
+.app-guide :is(button,input,textarea,select,summary):focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+.app-guide-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px 0; flex-shrink: 0; font-size: 12px; color: var(--ink-2); }
+.app-guide-top button { padding-inline: 8px; }
+.app-guide-progress { display: flex; gap: 5px; padding: 8px 24px 16px; flex-shrink: 0; }
+.app-guide-progress i { height: 3px; flex: 1; border-radius: 4px; background: var(--paper-edge); transition: background .3s; }
+.app-guide-progress .filled { background: var(--moss); }
+.app-guide-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
+.app-guide-page { width: 100%; min-width: 0; padding: 12px 24px 24px; animation: guide-page-in .3s ease-out both; }
+.app-guide-page :is(form,section,textarea,input,.guide-action-reveal,.guide-scene) { min-width: 0; max-width: 100%; }
+.app-guide-heading { text-align: center; }
+.app-guide-heading h1 { font-size: 24px; font-weight: 500; line-height: 1.5; margin: 8px 0 20px; outline: none; }
+.app-guide-welcome { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; margin-top: 16px; }
+.app-guide-options { display: grid; width: 100%; gap: 10px; }
+.app-guide-options button { padding: 12px 16px; border: 1px solid var(--paper-edge); border-radius: 12px; font-size: 16px; color: var(--ink-2); text-align: left; }
+.app-guide-options [aria-pressed=true], .app-guide-choices button[aria-pressed=true] { border-color: var(--moss); background: var(--guide-selected); color: var(--moss-deep); }
+.app-guide-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.app-guide-choices button { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px 16px; background: var(--guide-surface); border: 1px solid var(--paper-edge); border-radius: 16px; text-align: left; transition: border-color .2s, background .2s; }
+.app-guide-choices button > span { color: var(--moss); font-size: 28px; }
+.app-guide-choices strong { font-weight: 500; font-size: 18px; line-height: 1.6; }
+.app-guide-choices small { color: var(--ink-2); font-size: 12px; }
+.app-guide-text-button { color: var(--moss-deep); font-size: 14px; padding: 8px; }
+.app-guide-proof { border-bottom: 1px solid var(--paper-edge); padding-bottom: 16px; }
+.app-guide-stamp { color: var(--ink-2); font-size: 12px; }
+.app-guide-proof h2 { font-size: 18px; font-weight: 500; margin-top: 8px; }
+.app-guide-shelves { display: flex; border-bottom: 1px solid var(--paper-edge); gap: 4px; }
+.app-guide-shelves button { flex: 1; font-size: 14px; border-radius: 12px 12px 0 0; }
+.app-guide-shelves button[aria-pressed=true] { color: var(--moss-deep); background: var(--guide-selected); box-shadow: inset 0 -2px var(--moss); }
+.app-guide-controls { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 24px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+.app-guide-controls:has(.app-guide-round) { justify-content: center; gap: 16px; }
+.app-guide-controls .app-guide-round.app-guide-back,
+.app-guide-controls .app-guide-round.app-guide-next { display: grid; place-items: center; flex: 0 0 48px; width: 48px; height: 48px; min-height: 48px; padding: 0; margin: 0; border-radius: 50%; }
+.app-guide-round.app-guide-back { border: 1px solid var(--paper-edge); background: var(--guide-surface); color: var(--moss-deep); }
+.app-guide-round:disabled { opacity: .4; cursor: default; }
+.app-guide-next, .walk-primary, .walk-composer button { border-radius: 12px; background: var(--moss-deep); color: #fffdf8; padding: 10px 20px; font-size: 16px; }
+.app-guide-next { margin-left: auto; }
+.app-guide-next:disabled, .walk-composer button:disabled { opacity: .5; }
+.app-guide-back { padding: 8px 12px; font-size: 14px; color: var(--ink-2); }
+.walk-skip-step, .app-guide-form .app-guide-next:not(.guide-continue) { background: transparent; color: var(--ink-2); }
+.walkthrough { max-width: 500px; margin: 24px auto 0; outline: none; }
+.walk-stage-label { color: var(--ink-2); font-size: 12px; }
+.walk-focus { position: relative; outline: 1px solid var(--moss); outline-offset: 4px; border-radius: 16px; scroll-margin-block: 20px; }
+.walk-focus::after { content: ""; position: absolute; inset: -5px; border: 1px solid var(--moss); border-radius: inherit; pointer-events: none; animation: walk-focus-ring 1.35s ease-out 2; opacity: 0; }
+.walk-soft { opacity: .8; }
+.walk-composer { display: flex; gap: 8px; background: var(--guide-surface); border: 1px solid var(--paper-edge); border-radius: 16px; padding: 8px; margin-top: 20px; }
+.walk-composer input { flex: 1; width: 0; min-width: 0; font-size: 16px; padding: 8px; background: transparent; color: var(--ink); }
+.walk-composer button { padding-inline: 14px; }
+.walk-evidence { padding: 16px; border: 1px solid var(--paper-edge); background: var(--guide-surface); border-radius: 16px; }
+.walk-evidence label { font-size: 16px; display: block; margin-bottom: 12px; }
+.walk-evidence textarea { display: block; width: 100%; padding: 12px; border: 1px solid var(--paper-edge); border-radius: 12px; font-size: 16px; line-height: 1.8; background: var(--paper); resize: vertical; }
+.walk-evidence-actions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.walk-evidence [role=alert] { color: #a44134; font-size: 14px; margin-top: 12px; }
+.walk-receipt { border: 1px solid var(--paper-edge); background: var(--guide-surface); padding: 20px; border-radius: 16px; }
+.walk-receipt > strong { font-size: 16px; font-weight: 500; display: block; margin: 12px 0; }
+.walk-receipt-stamp { display: grid; place-items: center; background: var(--guide-selected); color: var(--moss-deep); width: 40px; height: 40px; border-radius: 50%; font-size: 24px; }
+.walk-receipt blockquote, .walk-book-page blockquote { padding: 12px 16px; margin: 16px 0; border-left: 2px solid var(--moss); font-size: 16px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.walk-book-button { display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; background: var(--guide-surface); border: 1px solid var(--paper-edge); padding: 24px; color: var(--moss-deep); font-size: 18px; }
+.walk-book-button > span { font-size: 28px; }
+.walk-book-button b { font-weight: 400; }
+.walk-open-book { padding: 16px; border: 1px solid var(--paper-edge); border-radius: 16px; }
+.walk-book-title { display: flex; align-items: center; justify-content: space-between; font-size: 18px; }
+.walk-book-title span, .walk-paper-date { font-size: 12px; color: var(--ink-2); }
+.walk-open-book .app-guide-shelves { margin-bottom: 24px; }
+.walk-tab-target { color: var(--moss-deep); }
+.walk-book-page h2 { font-size: 18px; font-weight: 500; margin: 12px 0; }
+.walk-chapters { display: grid; gap: 16px; padding: 12px 0; }
+.walk-chapters li { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.walk-chapters li span { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--guide-selected); color: var(--moss-deep); }
+.walk-preference-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.walk-preference-tags span { background: var(--guide-selected); padding: 8px 12px; border-radius: 12px; font-size: 14px; }
+.walk-slogan { font-size: 16px; color: var(--moss-deep); }
+.walk-next-ready, .walk-arrive { animation: walk-arrive .3s ease-out both; }
+.guide-narration { width: 100%; min-width: 0; margin: 20px auto 0; outline: none; }
+.guide-caption-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--moss-deep); font-size: 12px; }
+.guide-caption-label > span:last-child { display: flex; gap: 6px; }
+.guide-caption-label i { width: 5px; height: 5px; border-radius: 4px; background: var(--paper-edge); }
+.guide-caption-label i.current { background: var(--moss); width: 14px; }
+.guide-caption-label i.read { background: #bac8a7; }
+.guide-caption-text { min-height: 160px; padding-top: 24px; text-align: left; font-size: 20px; line-height: 1.9; color: var(--ink); animation: caption-enter .8s ease-out; overflow-wrap: anywhere; }
+.guide-floating .guide-caption-text { width: calc(100% - 16px); min-height: 150px; }
+.guide-floating[data-position=center] .guide-caption-text { margin-inline: auto; text-align: center; padding-top: 28px; }
+.guide-floating[data-position=left] .guide-caption-text { margin-right: auto; padding-top: 16px; }
+.guide-floating[data-position=right] .guide-caption-text { margin-left: auto; padding-top: 40px; }
+.guide-floating.has-scene .guide-caption-text { min-height: 0; padding-top: 16px; width: 100%; font-size: 18px; text-align: left; }
+.guide-scene { margin-top: 24px; text-align: left; animation: walk-arrive .5s ease-out; }
+.scene-try { outline: none; }
+.scene-try-note { color: var(--ink-2); font-size: 12px; line-height: 1.7; margin-bottom: 16px; }
+.scene-try-composer { width: 100%; border-radius: 20px; }
+.scene-try-composer textarea { width: 0; font-size: 16px; line-height: 1.8; resize: none; }
+.scene-try-send { display: grid; place-items: center; width: 44px; height: 44px; }
+.scene-try-send, .scene-click-hint { position: relative; background: var(--moss); color: var(--ink); animation: scene-send-attention 1.4s ease-in-out infinite; }
+.scene-try-send svg, .scene-action-label { display: inline-block; animation: scene-send-icon 1.4s ease-in-out infinite; }
+.scene-try-send::after, .scene-click-hint::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--moss-deep); border-radius: inherit; pointer-events: none; animation: scene-send-hint 1.4s ease-out infinite; opacity: 0; }
+.scene-try-reply { margin-bottom: 16px; font-size: 16px; }
+.scene-try-card { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; }
+.scene-try-card strong { flex: 1; min-width: 0; font-size: 18px; font-weight: 500; overflow-wrap: anywhere; }
+.scene-try-claim { flex-shrink: 0; padding: 6px 12px; border-radius: 12px; background: var(--moss-deep); color: var(--guide-surface); font-size: 14px; }
+.scene-click-hint { --scene-content-scale: 1.1; background: var(--moss); color: var(--ink); }
+.scene-try-form { display: grid; gap: 12px; }
+.scene-try-form label { font-size: 14px; color: var(--ink-2); }
+.scene-try-form textarea { width: 100%; font-size: 16px; line-height: 1.8; padding: 12px; border: 1px solid var(--paper-edge); border-radius: 12px; background: var(--guide-surface); }
+.scene-try-form button { justify-self: end; }
+.scene-try-record strong { font-weight: 500; color: var(--moss-deep); }
+.scene-try-record blockquote { margin: 16px 0; padding-left: 16px; border-left: 2px solid var(--moss); white-space: pre-wrap; overflow-wrap: anywhere; }
+.scene-try-record p { font-size: 14px; color: var(--ink-2); }
+.scene-conversation { display: grid; gap: 16px; }
+.scene-conversation:empty { display: none; }
+.scene-message { min-width: 0; width: calc(100% - 20px); padding: 12px 16px; border-radius: 16px; text-align: left; font-size: 16px; line-height: 1.8; }
+.scene-message.is-user { margin-left: auto; background: var(--guide-selected); }
+.scene-message.is-agent { margin-right: auto; background: var(--guide-surface); }
+.scene-speaker { display: block; color: var(--moss-deep); font-size: 12px; margin-bottom: 6px; }
+.scene-message p, .scene-message blockquote { white-space: pre-wrap; overflow-wrap: anywhere; }
+.scene-message .scene-try-card { margin-top: 12px; }
+.scene-message .scene-try-card strong { font-size: 16px; }
+.scene-selected { color: var(--moss-deep); margin-top: 8px; font-size: 14px; }
+.scene-conversation + .scene-try-form { margin-top: 20px; }
+.scene-try-form textarea[readonly] { color: var(--ink-2); resize: none; }
+.scene-conversation .scene-try-record p { font-size: 16px; }
+.guide-action-reveal { margin-top: 24px; animation: walk-arrive .3s ease-out; }
+.guide-narration.is-ready .guide-caption-text { min-height: 0; font-size: 16px; padding-top: 12px; color: var(--ink-2); }
+.guide-narration.is-ready .guide-caption-label > span:last-child { display: none; }
+.walk-history { margin-top: 16px; font-size: 12px; color: var(--ink-2); }
+.walk-history summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
+.walk-history p, .app-guide-bubble { font-size: 14px; line-height: 1.8; padding: 12px 0; }
+.app-guide-welcome > .guide-narration { margin-top: 0; }
+
+/* Flatten nested paper shells, and keep form controls on the same scale. */
+.app-guide-real-form { margin-top: 24px; }
+.app-guide-real-form .preferences-embedded,
+.app-guide-real-form .preferences-container,
+.app-guide-real-form .preference-sheet { height: auto; overflow: visible; }
+.app-guide .preference-sheet { background: transparent; border-radius: 0; padding-top: 0; }
+.app-guide .preference-sheet > div { padding-inline: 0; }
+.app-guide .preference-guide-heading p { font-size: 12px; color: var(--ink-2); }
+.app-guide .preference-guide-progress { display: none; }
+.app-guide .preference-guide-intro { padding: 0; }
+.app-guide .preference-question { padding-top: 16px; }
+.app-guide .preference-question > div:first-child { margin-bottom: 16px; }
+.app-guide .preference-question > div:first-child p { font-size: 18px; }
+.app-guide .preference-question button { border-width: 1px; border-radius: 12px; }
+.app-guide .preference-question button.flex-1 { min-height: 112px; gap: 8px; border-radius: 16px; }
+.app-guide .preference-question button.flex-1 > span:first-child { font-size: 24px; }
+.app-guide .preference-question button.flex-1 > span:nth-child(2) { font-size: 16px; }
+.app-guide .preference-question button.flex-1 > span:last-child { font-size: 12px; }
+.app-guide .preference-question input { border-width: 1px; border-radius: 12px; font-size: 16px; }
+.app-guide .preference-guide-actions { padding: 16px 0 0; }
+.app-guide .preference-guide-actions .preference-guide-next { flex: none; margin-left: auto; border-radius: 12px; font-size: 16px; padding-inline: 16px; }
+.app-guide-real-form .goals-embedded { position: relative; inset: auto; z-index: auto; padding: 0; height: auto; overflow: visible; }
+.app-guide .goals-paper { background: transparent; }
+.app-guide .goals-body { padding: 0; }
+.app-guide .goals-body h1 { font-size: 20px; margin-bottom: 16px; }
+.app-guide .goals-body h2 { font-size: 18px; }
+.app-guide .goals-eyebrow { display: none; }
+.app-guide .goals-intro { font-size: 16px; }
+.app-guide .goals-primary { box-shadow: none; border-radius: 12px; font-size: 16px; }
+.app-guide .goals-form :is(input,textarea,select) { border-radius: 12px; border-color: var(--paper-edge); background: var(--guide-surface); }
+.app-guide .goal-wish-seeds button { border-style: solid; border-radius: 12px; font-size: 14px; }
+.app-guide .goals-profile-note { font-size: 14px; }
+.app-guide .goals-cover { border: 1px solid var(--paper-edge); border-radius: 16px; box-shadow: none; transform: none; }
+.app-guide .goals-cover-number { display: none; }
+@keyframes caption-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scene-send-attention { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px var(--guide-selected); background: var(--moss-deep); color: var(--guide-surface); } }
+@keyframes scene-send-icon { 0%, 100% { transform: scale(1); } 50% { transform: translateY(-4px) scale(var(--scene-content-scale, 1.25)); } }
+@keyframes scene-send-hint { from { opacity: .9; inset: 0; } to { opacity: 0; inset: -10px; } }
+@keyframes walk-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes walk-focus-ring { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.025); } }
+@keyframes guide-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) {
+  .app-guide { padding: 0; }
+  .app-guide-book { height: 100%; border: 0; border-radius: 0; }
+  .app-guide-top { padding: max(4px, env(safe-area-inset-top)) 16px 0; gap: 8px; }
+  .app-guide-progress { padding: 4px 16px 12px; }
+  .app-guide-page { padding: 8px 16px 24px; }
+  .app-guide-heading h1 { font-size: 20px; margin-bottom: 16px; }
+  .app-guide-welcome { margin-top: 8px; gap: 16px; }
+  .app-guide-welcome > img { width: 140px; height: 140px; }
+  .app-guide-controls { gap: 8px; margin-top: 20px; }
+  .app-guide-controls .app-guide-next { flex: 1; margin-left: 0; min-height: 48px; padding-inline: 12px; }
+  .app-guide-back { flex-shrink: 0; padding-inline: 12px; }
+  .app-guide-choices { grid-template-columns: 1fr; }
+  .app-guide-choices button { display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; padding: 16px; }
+  .app-guide-choices button > span { grid-row: 1 / 3; font-size: 26px; }
+  .app-guide-choices small { grid-column: 2; }
+  .guide-caption-text { font-size: 18px; min-height: 128px; padding-top: 16px; line-height: 1.8; }
+  .guide-floating .guide-caption-text { width: calc(100% - 8px); min-height: 132px; }
+  .guide-floating[data-position=center] .guide-caption-text { padding-top: 20px; }
+  .guide-floating[data-position=left] .guide-caption-text { padding-top: 16px; }
+  .guide-floating[data-position=right] .guide-caption-text { padding-top: 24px; }
+  .guide-floating.has-scene .guide-caption-text { width: 100%; min-height: 0; font-size: 16px; padding-top: 12px; }
+  .guide-scene, .guide-action-reveal { margin-top: 20px; }
+  .scene-try-card strong { font-size: 16px; }
+  .scene-try-form button { width: 100%; min-height: 48px; }
+  .scene-try-form textarea { resize: vertical; }
+  .walk-evidence-actions { display: grid; grid-template-columns: 1fr; }
+  .walk-evidence-actions .walk-primary { min-height: 48px; width: 100%; }
+  .app-guide .preference-guide-actions .preference-guide-next { min-width: 0; flex: 1; padding-inline: 12px; }
+  .app-guide .goals-primary { width: 100%; min-height: 48px; }
+}
+@media (max-height: 600px) {
+  .app-guide { padding: 0; }
+  .app-guide-book { height: 100%; border-radius: 0; }
+  .app-guide-progress { padding-bottom: 8px; }
+  .app-guide-welcome { margin-top: 12px; gap: 12px; }
+  .app-guide-welcome img { width: 112px; height: 112px; }
+}
+/* React tracks the visible viewport; these also respond when the keyboard opens. */
+@container app (max-height: 600px) {
+  .app-guide-welcome { margin-top: 4px; gap: 12px; }
+  .app-guide-welcome > img { width: 104px; height: 104px; }
+}
+@container app (max-height: 450px) {
+  .app-guide-top { padding-top: max(2px, env(safe-area-inset-top)); }
+  .app-guide-progress { padding-top: 0; padding-bottom: 8px; }
+  .app-guide-welcome { gap: 8px; margin-top: 0; }
+  .app-guide-welcome > img { width: 64px; height: 64px; }
+  .guide-floating .guide-caption-text { min-height: 100px; font-size: 17px; padding-top: 12px; }
+  .guide-floating.has-scene .guide-caption-text { min-height: 0; font-size: 16px; }
+  .app-guide-controls { margin-top: 16px; }
+}
+@media (max-width: 600px) {
+  .app-guide:has(.scene-try-form) .app-guide-welcome > img { width: 64px; height: 64px; }
+  .app-guide:has(.scene-try-form) .app-guide-welcome { gap: 8px; margin-top: 0; }
+}
+@media (max-width: 360px) {
+  .app-guide .goals-field-pair { grid-template-columns: 1fr; }
+  .app-guide .preference-question button.flex-1 { min-height: 104px; gap: 6px; padding-inline: 6px; }
+  .app-guide .preference-question button.flex-1 > span:nth-child(2) { font-size: 14px; }
+}
+/* Guide actions share fully rounded ends; compact icon actions become circles. */
+.app-guide :is(.app-guide-controls, .app-guide-top, .scene-try) button { border-radius: 9999px; }
+.app-guide-controls .app-guide-back:not(.app-guide-round) { padding: 10px 20px; background: var(--guide-selected); color: var(--moss-deep); font-size: 16px; }
+.app-guide-controls:has(.app-guide-back:not(.app-guide-round)) > button { flex: 1; min-width: 0; margin-inline: 0; padding-inline: 20px; }
+.app-guide-controls:has(.app-guide-scene-skip) { justify-content: center; }
+.app-guide-controls .app-guide-scene-skip { flex: 0 0 auto; margin: 0; padding-inline: 24px; background: var(--guide-selected); color: var(--moss-deep); }
+@media (prefers-reduced-motion: reduce) {
+  .app-guide *, .app-guide *::before, .app-guide *::after { animation: none !important; transition: none !important; }
+}

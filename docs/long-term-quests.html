@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>支线任务 · 长程支线方案</title>
+<style>
+:root{--paper:#f8f3e8;--ink:#302e29;--muted:#746e63;--green:#647f4b;--orange:#b56b35}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.8 system-ui,sans-serif}
+main{max-width:980px;margin:auto;padding:48px 24px 80px}header{border-bottom:2px solid var(--ink);padding-bottom:28px;margin-bottom:36px}
+h1,h2,h3{font-family:"Hannotate SC","LXGW WenKai",serif;line-height:1.4}h1{font-size:42px;margin:12px 0}h2{margin-top:44px}
+.eyebrow{letter-spacing:.15em;color:var(--green);font-size:13px}.lead{font-size:21px;max-width:700px}.muted,small{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.card{padding:24px;background:#fffdf7;border:1px solid #d8cfbd;border-radius:18px;margin:16px 0}
+.demo{border-top:4px solid var(--green)}.tag{display:inline-block;border:1px solid #c4ceb8;border-radius:20px;padding:2px 12px;color:var(--green);font-size:13px}
+button,input,textarea,select{font:inherit}button{cursor:pointer;border:1px solid #a9b79b;border-radius:12px;background:#eff3e9;color:#344729;padding:10px 18px;min-height:44px;margin:4px}
+button:disabled{opacity:.5;cursor:default}input,textarea,select{display:block;width:100%;padding:10px;border:1px solid #ccc2af;border-radius:10px;background:white;margin:8px 0}
+label{display:block;margin:12px 0}.flow{padding:20px;border-left:3px solid var(--green);background:#edf1e5}li{margin:8px 0}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #d8cfbd;padding:12px;text-align:left;vertical-align:top}
+progress{width:100%;accent-color:var(--green)}.reward{border:2px dashed var(--orange);color:var(--orange);padding:18px;border-radius:50%;width:140px;text-align:center;margin:18px auto}
+[hidden]{display:none!important}@media(max-width:640px){.grid{grid-template-columns:1fr}h1{font-size:32px}main{padding:24px 18px}td,th{padding:8px;font-size:14px}}
+</style>
+<main>
+<header><div class="eyebrow">支线任务 / 产品迭代 / 2026.11.05</div><h1>让每次出发，都有一点积累。</h1>
+<p class="lead">长程支线：把一个长期愿望拆成能在闲暇里完成的小章节，接着上次的发现继续，最终留下自己的成果。</p>
+<p class="muted">生活有主线，快乐在支线。以下演示为交互示意数据，不代表用户已有进度。</p></header>
+
+<h2>为什么做</h2>
+<p>用户反馈目前的任务缺少意义。本轮优先解决“一次性任务缺少长期积累”，将创意库整体升级留到下一轮。任务不仅需要属于某个目标，还必须用得上前面的成果，并让用户看见自己正在积累什么。</p>
+<p>保留现有长期喜好档案，用它描述“我喜欢什么”；新增长程目标，描述“我想慢慢做成什么”。两者分开保存，共同影响任务推荐。目标建立是自愿入口，不阻断第一次使用。</p>
+<div class="flow">设定愿望与偏好 → 预览章节计划 → 用户确认 → 日常推荐偶遇 / 主动推进 → 提交证物并验收 → 章节留痕、解锁后续 → 成果手账与纪念章</div>
+
+<h2>FR-01 · 设定一个愿望</h2>
+<p>首页与聊天工具区通过统一的「我的手册」入口进入「喜好 / 心愿计划 / 日常记录」三个栏目，在「心愿计划」中设定愿望。栏目切换保留正在填写的内容。用户可以选择示例方向，也可以自由输入目标。示例只填入表单，不生成虚假的完成记录。</p>
+<table><tr><th>字段</th><th>行为</th></tr>
+<tr><td>愿望 / 成果</td><td>必填。用户描述想积累的能力、作品或体验，例如“用手机拍出一本自己的街区相册”。抽象目标通过拆解预览具体化，不擅自承诺掌握专业能力。</td></tr>
+<tr><td>为什么想做</td><td>可选。用于调整主题与反馈，不要求用户表达宏大意义。</td></tr>
+<tr><td>长期喜好与雷点</td><td>沿用现有档案；本目标可补充兴趣、可用材料与限制。没有填写时不编造器材、地点或预算。</td></tr>
+<tr><td>通常能留出的时间、场景</td><td>用于设计小章节；实际推荐仍以本次时长和场景为准。</td></tr></table>
+<p><strong>产品默认值 [Assumption, TBD]：</strong>每个目标先规划 3–6 个章节；每章是一项碎片任务，包含 2–4 个需要证物的步骤；默认零额外花费。先让用户看到一个能完成的阶段性成果，不一次排满数月日程。</p>
+<div class="grid">
+<section class="card demo"><span class="tag">交互示意 · 建立目标</span>
+<label>我想慢慢做到<input id="wish" value="用手机拍出一本自己的街区相册" maxlength="120"></label>
+<label>通常有多少时间<select><option>15 分钟</option><option>30 分钟</option></select></label>
+<button id="preview">预览拆解</button><p id="draftHint" role="status">还没有加入日常推荐。</p>
+</section>
+<section class="card" id="previewCard" hidden><h3>街区相册 · 四个小章节</h3>
+<ol><li>选一个熟悉的街角，留下第一张照片与观察。</li><li>沿用那个街角，换一个角度再拍并对比。</li><li>从前两次照片选一个主题，补拍一组细节。</li><li>从已有作品挑选照片，写下标题与图说，组成相册。</li></ol>
+<button id="confirm">就这样慢慢开始</button><button id="revise">修改愿望</button></section></div>
+<p>生成失败保留输入并允许重试，不能把套用无关模板的结果标成个性化拆解。用户确认前为草稿，不进入推荐；确认后保存章节与目标。已经开始的计划先保持版本稳定，目标改变时可暂停旧目标并建立新目标，原有证物不覆盖。</p>
+
+<h2>FR-02 · 随机出现，有序推进</h2>
+<p>每批普通推荐中可以混入一项长程章节。随机发生在“是否出现、从哪个符合条件的目标中选”，不发生在章节顺序上。只允许推荐该目标已解锁的下一章，已完成章节不重复计进度。</p>
+<p><strong>产品默认值 [Assumption, TBD]：</strong>符合条件时，每批以 50% 概率混入至多 1 项；至少保留 1 项普通任务。刚展示过的同一章节设置 20 分钟冷却，避免用户换一批仍然收到同一项。用户从长程页面主动选择「这次推进它」时不受随机和冷却限制，仍检查本次时间及场景。</p>
+<ul><li>时间不足、场景不符、目标暂停或已完成：本次不混入，不能把较长任务强行压短。</li><li>未选择、换一批或放下当前章节：不扣进度，下次仍可从该章继续。</li><li>多个目标符合条件：从符合条件的下一章中选择，避免一个目标占满推荐。</li><li>卡片标出目标名称、章节序号、这次积累的成果，以及与上次的关联；用户知道自己正在推进什么。</li></ul>
+<div class="card demo"><span class="tag">交互示意 · 推荐批次</span>
+<p id="offer">普通任务：整理一个抽屉 / 找三种窗边的颜色</p>
+<button id="mix">查看混入长程的示意</button><button id="ordinary">这次随便逛逛</button>
+<small>这里只演示两种结果，按钮不代表实际随机概率。</small></div>
+
+<h2>FR-03 · 每一章都用得上前一章</h2>
+<p>拆解需要明确每章的产物，以及后续会怎样使用它。首章建立基线或收集素材；中间章节围绕已完成的内容练习、补充或比较；最后一章整理为成果。避免仅把相似的独立任务编号后排列起来。</p>
+<p>执行时，吱呀读取上次的真实记录：例如用户上次拍的是“蓝色门牌”，下一章就围绕那张照片换角度、补细节。对话和卡片能查看前序成果；图片只能引用真实保存的照片，无法从文字判断的视觉细节不得编造。</p>
+<p>每一步继续采用原有文字 / 照片验收。只有整个碎片任务的证物全部通过，才算完成一个章节；“做完了”的点击或声明不能解锁下一章。任务可跨刷新恢复，网络重试不能重复结算。</p>
+
+<h2>FR-04 · 长程手账与专属奖励</h2>
+<p>「长程」页面按目标展示：愿望、最终成果、已完成章节数、章节地图、下一章和当前状态。展开章节可回看实际指引、原始文字、现场照片与完成日期。未完成章节显示解锁条件，不生成虚假作品。</p>
+<p><strong>奖励默认值 [Assumption, TBD]：</strong>第一章、完成过半、整条长程完成时分别点亮纪念章。纪念章属于这个目标，与普通任务徽章分开。最终奖励是专属成果页：将用户实际积累的照片、文字与章节串起来，允许下载文字记录；照片继续在成果页查看。奖励不涉及金钱，也不承诺“学会 / 治愈”等未验证效果。</p>
+<div class="card demo"><span class="tag">交互示意 · 成果与进度</span><h3>我的街区相册</h3>
+<progress id="progress" max="4" value="1" aria-label="章节进度"></progress>
+<p id="count">1 / 4 章 · 已留下第一张街角照片</p>
+<div class="reward" id="stamp">✦ 初次留痕<br><small>第 1 章已完成</small></div>
+<button id="advance">演示下一章通过</button><button id="pause">暂停这条长程</button>
+<p id="state" role="status">进行中 · 下一章等待你的空闲</p>
+</div>
+
+<h2>共用状态与边界</h2>
+<table><tr><th>状态</th><th>可以做什么</th><th>如何变化</th></tr>
+<tr><td>草稿</td><td>看拆解、返回修改</td><td>用户确认后进入进行中</td></tr>
+<tr><td>进行中</td><td>偶遇 / 主动推进、回看成果、暂停</td><td>所有章节完成后进入已完成</td></tr>
+<tr><td>已暂停</td><td>回看成果、恢复</td><td>不再推荐新章节；暂停前已经接取的任务允许完成并计入</td></tr>
+<tr><td>已完成</td><td>回看、下载记录、建立新目标</td><td>不因日历时间自动退回，不重复发奖</td></tr></table>
+<p>每个目标及其记录归属于当前用户；不可用其他用户的目标 ID 接取或领取进度。第一版沿用匿名设备身份，同一浏览器可恢复，跨设备登录不在本次新增范围。</p>
+<p>本方案中的概率、冷却和章节数量是待实际使用检验的产品判断，并非已验证的最优值。随机偶遇不会替代主动入口，暂停不会删除历史，离开几天不会丢失进度。</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+$('preview').onclick=()=>{if(!$('wish').value.trim()){ $('draftHint').textContent='先写下一个想慢慢做成的愿望。';return;} $('previewCard').hidden=false;$('draftHint').textContent='示意计划已展开，确认后才加入推荐。';};
+$('confirm').onclick=()=>{$('draftHint').textContent='已加入长程 · 可以随时暂停。';$('previewCard').hidden=true;};
+$('revise').onclick=()=>{$('previewCard').hidden=true;$('wish').focus();};
+$('mix').onclick=()=>{$('offer').textContent='普通任务：整理一个抽屉 ｜ 长程：街区相册 · 第 2/4 章。沿用你上次拍下的蓝色门牌，换个角度比较。';};
+$('ordinary').onclick=()=>{$('offer').textContent='这次只看普通任务。街区相册仍停在第 2 章，已有成果保留。';};
+let n=1,paused=false;
+$('advance').onclick=()=>{if(n>=4)return;n++;$('progress').value=n;$('count').textContent=n+' / 4 章 · 每一章的照片和图说都留在这里';$('stamp').innerHTML=n===4?'✦ 相册成书<br><small>四个章节的成果已汇集</small>':'✦ 渐成模样<br><small>已完成过半章节</small>';if(n===4){$('state').textContent='已完成 · 可以回看成果';$('advance').disabled=true;$('pause').disabled=true;}};
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'恢复这条长程':'暂停这条长程';$('state').textContent=paused?'已暂停 · 停止推荐，记录全部保留':'进行中 · 下一章等待你的空闲';$('advance').disabled=paused;};
+</script>
+</html>

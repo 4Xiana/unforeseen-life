@@ -1,0 +1,3 @@
+name = "支线任务 · unforeseen life"
+start = "sh start.sh"
+health = "/api/health"

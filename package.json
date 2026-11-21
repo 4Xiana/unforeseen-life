@@ -1,0 +1,36 @@
+{
+  "name": "moment",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n web,server -c yellow,cyan \"npm:dev:web\" \"npm:dev:server\"",
+    "dev:web": "vite",
+    "dev:server": "cd server && npx tsx watch index.ts",
+    "build": "tsc -b && vite build",
+    "build:deploy": "tsc -b && vite build --base=/unforeseen-life/",
+    "lint": "eslint .",
+    "test:speech": "npm --prefix server run test:speech",
+    "test:persistence": "npm --prefix server run build && server/node_modules/.bin/tsx --test tests/sessionPersistence.test.ts",
+    "test:goals": "server/node_modules/.bin/tsx --test tests/longTermGoals.test.ts",
+    "preview": "vite preview --base=/unforeseen-life/",
+    "preview:backend": "PORT=5184 npm --prefix server run dev",
+    "preview:local": "npm run build:deploy && concurrently --kill-others -n server,web -c cyan,yellow \"npm:preview:backend\" \"npm:preview\""
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.0.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "~5.6.2",
+    "vite": "^5.4.9"
+  }
+}
