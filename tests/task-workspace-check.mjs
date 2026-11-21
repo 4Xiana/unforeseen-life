@@ -123,7 +123,7 @@ try {
   await button('问问吱呀').click(); assert.equal(await chat().inputValue(), '还没有发出去的问题');
   await page.screenshot({ path: `${output}/03-assistance.png` });
   await page.keyboard.press('Escape'); await proof().waitFor();
-  await button('返回首页').click(); await button('继续当前支线').click(); assert.equal(await proof().inputValue(), '杯子、钥匙和便签');
+  await button('返回首页').click(); await button('继续这条支线').click(); assert.equal(await proof().inputValue(), '杯子、钥匙和便签');
   await page.reload({ waitUntil: 'domcontentloaded' }); await proof().waitFor(); assert.equal(await proof().inputValue(), '杯子、钥匙和便签', 'refresh restores draft without resubmitting');
   await button('提交记录').click(); await page.getByRole('alert').filter({ hasText: '请补上展览名字' }).waitFor();
   assert.equal(await proof().inputValue(), '杯子、钥匙和便签');

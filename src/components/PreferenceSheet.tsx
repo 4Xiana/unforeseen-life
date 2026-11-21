@@ -17,7 +17,7 @@ interface Props {
   onSaved?: () => void;
 }
 const energyOptions: { value: EnergyPref; label: string }[] = [{ value: '坐', label: '安静坐着' }, { value: '慢', label: '慢慢活动' }, { value: '动', label: '动起来' }];
-const budgetOptions: { value: BudgetPref; label: string }[] = [{ value: 'free', label: '尽量不花钱' }, { value: 'low', label: '小额花费可以' }];
+const budgetOptions: { value: BudgetPref; label: string }[] = [{ value: 'free', label: '尽量不花钱' }, { value: 'low', label: '花一点也可以' }];
 const socialOptions: { value: SocialPref; label: string }[] = [{ value: 'solo', label: '独自享受' }, { value: 'pair', label: '两人同行' }, { value: 'group', label: '多人一起' }];
 const noveltyOptions: { value: NoveltyPref; label: string }[] = [{ value: 1, label: '熟悉稳妥' }, { value: 2, label: '一点新鲜' }, { value: 3, label: '脑洞玩法' }];
 const mechanismOptions: MechanismPref[] = ['收集图鉴', '随机委托', '视角重赋', '规则限制', '定点观察', '触感心流', '盲盒猜谜', '角色扮演', '连接动作', '留痕收尾'];
@@ -56,8 +56,8 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
   }}>
     <fieldset disabled={saving} className="basic-preferences-fields">
       <legend className="sr-only">基础喜好</legend>
-      <ChoiceGroup<EnergyPref> label="平时喜欢什么节奏？" value={input.energy} options={energyOptions} onChange={value => change({ energy: input.energy === value ? 'any' : value })} />
-      <ChoiceGroup<BudgetPref> label="平时的花费偏好？" value={input.budget} options={budgetOptions} onChange={value => change({ budget: input.budget === value ? 'any' : value })} />
+      <ChoiceGroup<EnergyPref> label="你喜欢怎样的节奏？" value={input.energy} options={energyOptions} onChange={value => change({ energy: input.energy === value ? 'any' : value })} />
+      <ChoiceGroup<BudgetPref> label="愿意为新体验花一点钱吗？" value={input.budget} options={budgetOptions} onChange={value => change({ budget: input.budget === value ? 'any' : value })} />
       {!compact && <>
         <ChoiceGroup<SocialPref> label="通常更喜欢和谁一起？" value={input.social} options={socialOptions} onChange={value => change({ social: input.social === value ? 'any' : value })} />
         <ChoiceGroup<NoveltyPref> label="希望玩法多一点什么？" value={input.novelty} options={noveltyOptions} onChange={value => change({ novelty: input.novelty === value ? 0 : value })} />
@@ -65,8 +65,8 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
         <label className="basic-field">不想做的事（选填）<input maxLength={200} value={input.avoids} placeholder="比如不拍照、不想与陌生人互动" onChange={e => change({ avoids: e.target.value })} /></label>
         <details className="basic-more"><summary>明确喜欢的玩法（选填）{input.mechs.length ? ` · 已选${input.mechs.length}项` : ''}</summary><div className="basic-mechanisms">{mechanismOptions.map(mechanism => <button type="button" key={mechanism} aria-pressed={input.mechs.includes(mechanism)} onClick={() => change({ mechs: input.mechs.includes(mechanism) ? input.mechs.filter(m => m !== mechanism) : [...input.mechs, mechanism] })}>{mechanism}</button>)}</div></details>
       </>}
-      <p className="preference-note">{compact ? '不选就是都可以。之后可到「我的手册 → 喜好」做完整拟合。' : '点一下选中，再点取消。明确的限制会优先于问卷推测，之后也能随时修改。'}</p>
-      <button type="submit" className="preference-primary">{saving ? '正在保存…' : compact ? '保存喜好，下一步 →' : '保存基础喜好'}</button>
+      {!compact && <p className="preference-note">选你喜欢的就好，之后随时能改。</p>}
+      <button type="submit" className="preference-primary">{saving ? '正在保存…' : compact ? '选好啦，继续 →' : '保存基础喜好'}</button>
     </fieldset>
     {error && <p className="preference-error" role="alert">{error}</p>}
     {saved && <p className="preference-note" role="status">基础喜好已保存，之后的推荐会参考它。</p>}
@@ -80,7 +80,7 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave, onFit, 
   if (compact) return <BasicPreferences initial={initial} compact onSave={onSave} onSaved={onSaved} />;
   return <div className={`preferences-hub ${embedded ? 'is-embedded' : ''}`}>
     <div className="preferences-hub-paper">
-      <header className="preferences-hub-header"><div><p className="preference-eyebrow">从基本选择，到更懂你的玩法</p><h2>我的喜好</h2></div>{!embedded && <button onClick={onClose} aria-label="关闭喜好设置">关闭</button>}</header>
+      <header className="preferences-hub-header"><div><h2>我的喜好</h2></div>{!embedded && <button onClick={onClose} aria-label="关闭喜好设置">关闭</button>}</header>
       <div className="preferences-subtabs" role="tablist" aria-label="喜好设置方式" onKeyDown={e => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
         e.preventDefault(); const next = e.key === 'Home' ? 'basic' : e.key === 'End' ? 'fitting' : tab === 'basic' ? 'fitting' : 'basic';

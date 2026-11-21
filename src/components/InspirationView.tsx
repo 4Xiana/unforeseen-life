@@ -82,9 +82,8 @@ export function InspirationView() {
   }
   return <div className="inspiration-view">
     <header className="inspiration-intro">
-      <span className="inspiration-eyebrow">♡ 把心动的小事留住</span>
-      <h2>看到喜欢的玩法，<br />先收进来。</h2>
-      <p>写下自己想做的任务，或粘贴收藏的文章、视频文案和链接。吱呀帮你整理成支线，留到合适的时候再推荐。</p>
+      <h2>灵感收藏</h2>
+      <p>把想尝试的小事存下来，合适时再出发。</p>
     </header>
     <form className="inspiration-form" onSubmit={e => { e.preventDefault(); void extract(); }}>
       <label htmlFor="inspiration-input">这次想留下什么灵感？</label>

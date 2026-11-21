@@ -96,7 +96,7 @@ export function ConversationPanel(props: Props) {
       {fsmState === 'S0' && !streaming && !onReturnToTask && <button type="button" className="conversation-quick-start session-secondary" onClick={() => send('想探索点有趣的事，先推荐一条15分钟能做的支线吧')}>没想好？先发现一条支线</button>}
       <div className="conversation-input"><input aria-label="和吱呀说说你的想法" value={value} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.nativeEvent.isComposing) e.preventDefault(); }} disabled={disabled} placeholder={voice.listening ? '正在聆听…' : onReturnToTask ? '遇到什么问题，和吱呀说说…' : fsmState === 'S1' ? '选一个，或者说说你的想法…' : '聊聊想探索什么，也可以说说你在哪儿…'} />{voice.supported && <VoiceButton listening={voice.listening} phase={voice.phase} error={voice.error} onToggle={voice.toggle} disabled={disabled} />}<button type="submit" className="conversation-send" disabled={disabled || !value.trim()} aria-label="发送消息"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden><path d="m3 10 14-7-5 14-3-6-6-1Zm6 1 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg></button></div>
       <VoiceStatus phase={voice.phase} error={voice.error} />
-      <p className="conversation-caption">{onReturnToTask ? '这里聊想法，作品请回任务页提交。' : '先聊聊，再选一件想做的小事。'}</p>
+      {onReturnToTask && <p className="conversation-caption">聊完后，回任务页留下你的作品。</p>}
     </form>
   </section>;
 }

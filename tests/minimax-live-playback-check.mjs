@@ -24,7 +24,7 @@ try {
     if (response.url().endsWith('/api/tts')) voiceResponse = { status: response.status(), type: response.headers()['content-type'] };
   });
   await page.goto('http://localhost:5183/unforeseen-life/');
-  await page.getByRole('button', { name: '跳过引导' }).click();
+  await page.getByRole('button', { name: '稍后再看' }).click();
   await page.getByRole('button', { name: '我的手册', exact: true }).click();
   await page.getByRole('tab', { name: /灵感收藏/ }).click();
   await page.getByRole('textbox', { name: '这次想留下什么灵感？' }).fill('用三片落叶和一张纸做秋日拼贴，在家十五分钟。');
@@ -32,7 +32,7 @@ try {
   await page.locator('.inspiration-preview').waitFor();
   await page.screenshot({ path: 'docs/screenshots/07-灵感收藏.png', fullPage: true });
   await page.getByRole('button', { name: '关闭我的手册' }).click();
-  await page.getByRole('button', { name: '先出发再说' }).click();
+  await page.getByRole('button', { name: '给我点灵感' }).click();
   await page.locator('.ticket-card').first().waitFor();
   await page.getByRole('button', { name: '沉浸', exact: true }).click();
   await page.getByRole('button', { name: '关闭', exact: true }).click();

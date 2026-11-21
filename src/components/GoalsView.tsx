@@ -142,16 +142,16 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
 
   if (quickSetup) return <form className="quick-wish" onSubmit={e => {
     e.preventDefault();
-    if (input.wish.trim().length < 2) { setError('用至少两个字写下心愿吧，也可以稍后再填。'); return; }
+    if (input.wish.trim().length < 2) { setError('再多写一点吧，两个字就好，也可以先跳过。'); return; }
     try {
       localStorage.setItem(wishKey(), JSON.stringify({ ...input, wish: input.wish.trim() }));
       confirmedCallback.current?.();
-    } catch { setError('浏览器暂时无法保存草稿，可以复制心愿后稍后再填。'); }
+    } catch { setError('这次没能存好，可以先复制下来，稍后再试。'); }
   }}>
-    <label htmlFor="quick-wish-input">我的心愿<textarea id="quick-wish-input" required minLength={2} maxLength={500} rows={2} value={input.wish} placeholder="比如：重新捡起画画" onChange={e => { setInput({ ...input, wish: e.target.value }); setError(''); }} /></label>
+    <label htmlFor="quick-wish-input">想试试的事<textarea id="quick-wish-input" required minLength={2} maxLength={500} rows={2} value={input.wish} placeholder="比如：重新捡起画画" onChange={e => { setInput({ ...input, wish: e.target.value }); setError(''); }} /></label>
     <div className="quick-wish-seeds" aria-label="心愿灵感">{['重新捡起画画', '找到自己的拿手菜', '做一本街区观察册'].map(wish => <button type="button" key={wish} aria-pressed={input.wish === wish} onClick={() => { setInput({ ...input, wish }); setError(''); }}>{wish}</button>)}</div>
-    <p className="quick-guide-footnote">先存为本机草稿。之后到「我的手册 → 心愿计划」安排章节。</p>
-    <button className="walk-primary quick-form-submit" type="submit">留下心愿，完成引导 →</button>
+    <p className="quick-guide-footnote">会先记在这台设备上，之后去「心愿计划」慢慢安排。</p>
+    <button className="walk-primary quick-form-submit" type="submit">记下来，出发吧 →</button>
     {error && <p className="quick-guide-error" role="alert">{error}</p>}
   </form>;
 
@@ -159,7 +159,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
     <div className="goals-paper">
       <header className="goals-top">
         {(!embedded || goal || creating) && <button className="goals-back" onClick={() => { if (goal || creating) { setSelectedId(undefined); setCreating(false); setError(''); } else onClose(); }}>{goal || creating ? '← 心愿计划' : '← 回到此刻'}</button>}
-        <span className="font-hand">一点一点，也会很远</span>
+
         {!embedded && <button className="goals-close" onClick={onClose} aria-label="关闭心愿计划">×</button>}
       </header>
       <main className="goals-body">
@@ -241,7 +241,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
             {goal.status === 'completed' && <p className="goals-finale">从一个念头，到这一册真实发生过的日常。它已经属于你了。</p>}
           </section>
         </> : <>
-          <p className="goals-eyebrow">LONG LITTLE JOURNEYS</p>
+
           <h1 id="goals-heading">把喜欢，慢慢过成生活。</h1>
           <p className="goals-intro">不必一下走很远。把一个愿望放在这里，每次留一点时间，让零碎的小事有自己的来处和去向。</p>
           {localWish && <section className="goals-reason" aria-label="本机心愿草稿"><span>上次留下的心愿 · 本机草稿</span><p>{localWish.wish}</p><button className="goals-primary" onClick={() => { setEditingId(undefined); setInput(localWish); setCreating(true); }}>继续安排这个心愿 →</button></section>}

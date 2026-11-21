@@ -110,7 +110,7 @@ export function PersonalLibrary({ tab, onTabChange, onClose, onOpenGuide, needsP
         <p className="library-guide-title" tabIndex={-1}><span aria-hidden>✳</span> 喜好与心愿，都收好了。</p>
         <button onClick={() => setGuide('off')}>翻开我的手册 →</button>
       </div>}
-      {guide === 'off' && (needsPreferences || !goalState?.hasConfirmed) && <div className="library-guide-resume"><button onClick={startGuide}>继续填写引导 →</button></div>}
+      {guide === 'off' && (tab === 'preferences' || tab === 'goals') && (needsPreferences || !goalState?.hasConfirmed) && <div className="library-guide-resume"><button onClick={startGuide}>让吱呀陪我填 →</button></div>}
       {tabs.map(item => <section key={item.id} className="library-panel" id={`library-panel-${item.id}`} role="tabpanel" aria-labelledby={`library-tab-${item.id}`} tabIndex={0} hidden={tab !== item.id}>
         {content[item.id]}
       </section>)}

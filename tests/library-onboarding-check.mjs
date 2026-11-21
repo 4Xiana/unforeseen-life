@@ -11,10 +11,10 @@ const open = async page => {
     const id = localStorage.getItem('xian.clientId');
     return !!localStorage.getItem(`xian-app-guide-v1:${id}`);
   });
-  if (await page.locator('.app-guide').count()) await page.getByRole('button', { name: '跳过引导' }).click();
+  if (await page.locator('.app-guide').count()) await page.getByRole('button', { name: '稍后再看' }).click();
   await page.getByRole('button', { name: '我的手册', exact: true }).click();
   const saved = await page.evaluate(() => localStorage.getItem(`xian-library-guide-v1:${localStorage.getItem('xian.clientId')}`));
-  const continueButton = page.getByRole('button', { name: '继续填写引导 →' });
+  const continueButton = page.getByRole('button', { name: '让吱呀陪我填 →' });
   // Filling is now explicit; opening the handbook never launches a second tour.
   if (saved === 'preferences' || saved === 'goals' || (!saved && await page.locator('.library-dot').count())) {
     await continueButton.click();
@@ -119,14 +119,14 @@ try {
   await close(page);
   await page.reload();
   await open(page);
-  await page.getByRole('button', { name: '继续填写引导 →' }).waitFor();
+  await page.getByRole('button', { name: '让吱呀陪我填 →' }).waitFor();
   assert.equal(await page.locator('.preferences-guided').count(), 0);
-  await page.getByRole('button', { name: '继续填写引导 →' }).click();
+  await page.getByRole('button', { name: '让吱呀陪我填 →' }).click();
   await page.locator('.preferences-guided').waitFor();
   await page.getByRole('tab', { name: '日常记录' }).click();
   assert.equal(await page.locator('.preferences-guided').count(), 0);
   await page.getByRole('tab', { name: '喜好', exact: false }).click();
-  await page.getByRole('button', { name: '继续填写引导 →' }).click();
+  await page.getByRole('button', { name: '让吱呀陪我填 →' }).click();
   await page.screenshot({ path: '/tmp/xian-onboarding-mobile.png' });
   const animated = await page.locator('.library-guide-track .current i').evaluate(e => getComputedStyle(e).animationName);
   assert.equal(animated, 'guide-ring');

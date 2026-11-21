@@ -1,0 +1,130 @@
+/* Shared finish for the existing paper-and-green identity. Layout stays with each page. */
+:root {
+  --font-ui: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --font-title: "LXGW WenKai", "Noto Sans SC", sans-serif;
+  --surface-line: #e5e0d6;
+  --surface-selected: #f0f4eb;
+  --radius-control: 14px;
+  --radius-surface: 20px;
+}
+body::before, body::after { display: none; }
+.app-shell { font-family: var(--font-ui); }
+.app-shell :is(button, input, textarea, select) { font-family: inherit; }
+.app-shell button { cursor: pointer; }
+.app-shell .markdown-body :is(em, blockquote), .app-shell .markdown-body ol li::marker { font-family: var(--font-ui); }
+.app-shell button:disabled { cursor: default; }
+.app-shell button:not(:disabled):active { filter: brightness(.97); }
+.app-shell :is(button, input, textarea, select, summary):focus-visible { outline: 2px solid var(--moss-deep); outline-offset: 3px; }
+.app-shell :is(input, textarea, select)::placeholder { color: var(--fog); opacity: 1; }
+.app-shell :is(.font-hand, .font-display, .font-slogan) { font-family: var(--font-title); }
+.app-shell :is(.library-header h1, .thread-page-heading h2, .thread-detail h3, .preferences-hub-header h2, .inspiration-intro h2, .goals-body h1, .goals-body h2, .conversation-brand h1, .task-workspace-brand, .task-title h1, .library-guide-title, .section-label, .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4) {
+  font-family: var(--font-title); font-weight: 500; letter-spacing: .01em;
+}
+.app-shell :is(.library-header h1, .thread-page-heading h2, .preferences-hub-header h2, .inspiration-intro h2) { font-size: 27px; line-height: 1.5; }
+.app-shell :is(.thread-map, .preferences-hub, .inspiration-view, .goals-overlay) { font-family: var(--font-ui); }
+.app-shell :is(.thread-intro, .goals-intro, .inspiration-intro > p) { color: var(--ink-2); font-size: 14px; line-height: 1.85; }
+.app-shell :is(.session-primary, .thread-primary, .preference-primary, .goals-primary, .inspiration-primary, .walk-primary, .app-guide-next) {
+  background: var(--moss-deep); color: var(--card); border: 1px solid var(--moss-deep); border-radius: var(--radius-control);
+  min-height: 48px; padding: 11px 18px; font-size: 15px; line-height: 1.6; box-shadow: none;
+}
+.app-shell :is(.session-primary, .thread-primary, .preference-primary, .goals-primary, .inspiration-primary, .walk-primary, .app-guide-next):hover:not(:disabled) { background: #405c2b; border-color: #405c2b; }
+.app-shell :is(.session-secondary, .preference-secondary) { border-color: var(--surface-line); border-radius: var(--radius-control); box-shadow: none; }
+.library-header { padding-bottom: 18px; }
+.library-tabs { gap: 4px; border-bottom-color: var(--surface-line); }
+.library-tabs button { border-radius: 0; font-family: var(--font-ui); }
+.library-tabs button[aria-selected=true] { border-color: transparent; background: transparent; box-shadow: inset 0 -2px 0 var(--moss-deep); }
+.library-tabs button[aria-selected=true]:after { display: none; }
+.library-tabs button > span { display: none; }
+.library-close { border-color: var(--surface-line); }
+.library-guide-resume { padding-top: 4px; }
+.app-shell :is(.basic-choice-group button, .fitting-pair-card, .fitting-dimensions article, .fitting-review button, .thread-detail, .inspiration-form, .inspiration-preview) { border-color: var(--surface-line); }
+.app-shell :is(.basic-choice-group button, .basic-mechanisms button)[aria-pressed=true], .fitting-pair-card[aria-pressed=true] { background: var(--surface-selected); border-color: var(--moss-deep); }
+.preference-fitting-invite { border: 0; border-radius: var(--radius-control); background: var(--surface-selected); padding: 16px 18px; }
+.preference-fitting-invite p { font-size: 13px; }
+.thread-detail { border-radius: var(--radius-surface); }
+.thread-route[aria-pressed=true] { border-color: var(--surface-line); background: var(--surface-selected); }
+.thread-route-heading strong { font-family: var(--font-title); font-size: 18px; }
+.thread-route-group h3 { color: var(--ink-2); font-size: 13px; }
+.thread-detail-heading h3 { font-size: 25px; }
+.thread-action { border-bottom: 0; font-size: 13px; padding-inline: 10px; border-radius: 12px; background: var(--surface-selected); }
+.thread-map-help { margin-top: 20px; font-size: 12px; color: var(--ink-2); }
+.thread-map-help summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+.thread-map-help .thread-map-note { margin: 0 0 12px; }
+.thread-detail-tools { gap: 8px 20px; }
+.thread-detail-tools button:last-child:not(:first-child) { color: var(--ink-2); }
+.thread-timeline .shadow-paper-sm { box-shadow: none; }
+.thread-pick-list label { border-bottom-color: var(--surface-line); }
+.app-shell .goals-paper { background: var(--paper); }
+.goals-cover, .goals-cover:nth-child(even) { border: 1px solid var(--surface-line); border-radius: var(--radius-surface); background: var(--card); box-shadow: none; transform: none; }
+.goals-cover:hover { transform: none; background: var(--surface-selected); }
+.goals-cover-number { display: none; }
+.goals-cover h2 { font-family: var(--font-title); }
+.goals-next { background: var(--surface-selected); border: 1px solid var(--surface-line); border-radius: var(--radius-surface); }
+.goals-stamps > div, .goals-stamps > div.earned { border-radius: var(--radius-control); transform: none; }
+.goals-reason { border-left: 0; padding: 12px 16px; border-radius: var(--radius-control); background: var(--surface-selected); }
+.inspiration-intro h2 { margin: 0 0 10px; }
+.inspiration-form, .inspiration-preview { border-radius: var(--radius-surface); }
+.inspiration-form-foot small { font-size: 12px; }
+.inspiration-view :is(textarea,input) { font-size: 16px; border-radius: var(--radius-control); }
+.handbook-achievements { margin: 0 0 22px; }
+.handbook-achievements > summary { min-height: 44px; padding: 10px 0; font-size: 14px; cursor: pointer; color: var(--moss-deep); }
+.handbook-achievements .badge-wall { margin-top: 12px; }
+.handbook-embedded .shadow-paper-sm { box-shadow: none; }
+.conversation-header, .task-workspace-header { border-bottom-color: var(--surface-line); }
+.conversation-scroll .index-card { box-shadow: none; border-color: var(--surface-line); border-radius: var(--radius-surface); }
+.task-current-step { border-color: var(--surface-line); box-shadow: none; }
+.task-evidence-prompt { background: var(--surface-selected); border-color: transparent; border-radius: var(--radius-control); }
+.task-ask { border-color: var(--surface-line); box-shadow: none; }
+.landing-screen { font-family: var(--font-ui); }
+.landing-hero h1 { font-family: var(--font-title); }
+.landing-intake { border-width: 1px; border-color: var(--surface-line); border-radius: var(--radius-surface); box-shadow: none; }
+.landing-intake button { min-height: 44px; font-family: var(--font-ui); font-size: 13px; box-shadow: none; }
+.landing-intake button[aria-pressed=true] { background: var(--surface-selected); color: var(--moss-deep); border-color: var(--moss-deep); }
+.landing-input input { border-width: 1px; border-color: var(--surface-line); border-radius: var(--radius-control); padding-right: 55px; min-height: 54px; font-size: 16px; }
+.landing-input > button { width: 44px; height: 44px; right: 5px; border-radius: 11px; background: var(--moss-deep); }
+.landing-footer { padding-top: 12px; }
+.landing-actions > button:first-child { background: transparent; box-shadow: none !important; padding-inline: 10px; }
+.landing-actions > button:first-child span[aria-hidden] { display: none; }
+.landing-actions > button:last-child { background: var(--moss-deep); border-radius: var(--radius-control); box-shadow: none; }
+.landing-actions > button:nth-child(2) { border: 1px solid var(--surface-line); background: transparent; }
+.landing-screen .index-card { transform: none !important; box-shadow: none; border: 1px solid var(--surface-line); }
+.landing-mic { background: var(--moss-deep); box-shadow: 0 8px 22px #4f6b361a; }
+.app-guide { --guide-font: var(--font-ui); --guide-surface: var(--card); --guide-selected: var(--surface-selected); }
+.app-guide h1, .app-guide h2 { font-family: var(--font-title); }
+.app-guide-book { border-color: var(--surface-line); }
+.app-guide-top { color: var(--ink-2); }
+.app-guide-progress { gap: 6px; }
+.app-guide-progress i { height: 2px; background: var(--surface-line); }
+.quick-guide-location { font-size: 12px; color: var(--ink-2); }
+.quick-guide-intro { gap: 18px; }
+.app-guide-compact .quick-guide-intro h1 { font-size: 32px; line-height: 1.5; }
+.quick-guide-intro > p:not([class]) { font-size: 15px; line-height: 1.9; }
+.quick-guide-example { padding: 18px; border-color: var(--surface-line); border-radius: var(--radius-surface); }
+.app-guide-compact .quick-guide-description { font-size: 14px; line-height: 1.85; color: var(--ink-2); margin-bottom: 24px; }
+.app-guide-compact .quick-guide-footer { border-top: 0; padding-top: 16px; }
+.quick-demo-track { margin-block: 16px 20px; }
+.quick-demo-task { border-color: var(--surface-line); border-radius: var(--radius-surface); }
+.quick-demo-proof > h2 { margin-top: 24px; }
+.quick-demo-work { border: 0; background: var(--surface-selected); border-radius: var(--radius-control); padding: 14px 16px; }
+.quick-demo-saved { background: var(--surface-selected); }
+.quick-demo-saved p { font-size: 13px; line-height: 1.8; }
+.app-guide .basic-choice-group { margin-bottom: 28px; }
+.app-guide .basic-choice-group legend { font-size: 15px; }
+.app-guide .basic-choice-group button { font-size: 14px; border-radius: var(--radius-control); }
+.quick-wish-seeds { gap: 8px; }
+.quick-wish-seeds button { border-radius: var(--radius-control); font-size: 13px; }
+.quick-wish .quick-guide-footnote { font-size: 12px; line-height: 1.8; }
+@media(max-width:600px) {
+  .app-shell :is(.library-header h1, .thread-page-heading h2, .preferences-hub-header h2, .inspiration-intro h2) { font-size: 25px; }
+  .library-header { padding-bottom: 12px; }
+  .landing-voice-content { padding-top: 24px; }
+  .app-guide-compact h1 { font-size: 25px; }
+  .quick-guide-intro { gap: 14px; }
+  .app-guide-compact .quick-guide-intro h1 { font-size: 29px; }
+}
+@media(max-height:550px) {
+  .landing-voice-content { padding-top: 4px; }
+  .quick-guide-intro { gap: 10px; }
+  .app-guide-compact .quick-guide-intro h1 { font-size: 26px; }
+}
+@media(prefers-reduced-motion:reduce) { .app-shell *, .app-shell *:before, .app-shell *:after { scroll-behavior: auto !important; transition: none !important; } }

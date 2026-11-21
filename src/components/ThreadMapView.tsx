@@ -112,7 +112,7 @@ export function ThreadMapView({ view, active, busy, executing, onExplore, onGoal
 
   return <div ref={root} className={`thread-map ${hasDetail ? 'thread-has-detail' : ''}`}>
     <header className="thread-page-heading">
-      <div><p className="thread-eyebrow">我的探索，慢慢有了形状</p><h2 tabIndex={-1} data-thread-overview-heading>支线脉络</h2></div>
+      <div><h2 tabIndex={-1} data-thread-overview-heading>支线脉络</h2></div>
       <button type="button" className="thread-action" disabled={!view?.quests.length || loading || !!loadError || pending} onClick={() => edit()}>串成一条支线 <span aria-hidden>＋</span></button>
     </header>
     <p className="thread-intro">把试过的小事连起来，看见值得继续的方向。</p>
@@ -123,17 +123,17 @@ export function ThreadMapView({ view, active, busy, executing, onExplore, onGoal
     <div className="thread-map-layout">
       <div className="thread-overview">
         <div className="thread-origin"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21V11M12 15C3 15 3 4 3 4S12 3 12 12M12 11C12 3 21 3 21 3S22 12 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg><span>从一次尝试出发</span><small>{view ? `${view.quests.length} 段已完成的经历` : '等待记录'}</small></div>
-        {!view?.quests.length && view && <p className="thread-empty-intro">地图还在等你的第一段经历。可以先选个方向试试，也可以去心愿里种下一个计划。</p>}
+        {!view?.quests.length && view && <p className="thread-empty-intro">地图还在等你的第一段经历，选个喜欢的方向试试吧。</p>}
         {(['custom', 'goal', 'category'] as const).map(kind => {
           const group = routes.filter(route => route.kind === kind);
           if (!group.length) return null;
           return <section className="thread-route-group" key={kind} aria-label={sourceNames[kind]}>
-            <h3>{sourceNames[kind]}<small>{kind === 'custom' ? '由你串起' : kind === 'goal' ? '沿着章节前进' : '按体验类型整理'}</small></h3>
+            <h3>{sourceNames[kind]}</h3>
             <ul>{group.map(route => <RouteBranch key={route.id} route={route} selected={route.id === selectedId} onSelect={() => { setEditor(null); setSelectedId(route.id); setNotice(''); }} />)}</ul>
           </section>;
         })}
         {!goals.length && !loading && !loadError && <button type="button" className="thread-wish-link" onClick={onGoals}>想围绕一个心愿走得更远？去安排心愿章节 →</button>}
-        <p className="thread-map-note">实心圆是已完成的经历，空心圆是尚未走过的地方。同一段经历可以连接不同主题。</p>
+        <details className="thread-map-help"><summary>怎么看这张图？</summary><p className="thread-map-note">实心圆是已完成的经历，空心圆是还没走过的地方。一段经历也可以放进不同主题。</p></details>
         <button type="button" className="thread-text-button" onClick={onRecords}>翻看全部日常记录 →</button>
       </div>
       {hasDetail && <section className="thread-detail" aria-label={editor ? '编辑支线主题' : '支线详情'}>
@@ -156,7 +156,6 @@ export function ThreadMapView({ view, active, busy, executing, onExplore, onGoal
             <p className="thread-eyebrow">{sourceNames[selected.kind]}{selected.goal ? ` · ${goalNames[selected.goal.status]}` : ''}</p>
             <h3 tabIndex={-1} data-thread-heading>{selected.title}</h3>
             <p>{selected.description}</p>
-            {selected.kind !== 'goal' && <small>按探索时间串起；你可以从任何一次经历继续。</small>}
           </div>
           {!!selected.stops.length && <ol className="thread-timeline" style={{ '--route-color': selected.color } as CSSProperties}>
             {selected.stops.map((stop, index) => <li key={stop.id} data-status={stop.status}>
@@ -170,7 +169,7 @@ export function ThreadMapView({ view, active, busy, executing, onExplore, onGoal
           {!selected.stops.length && <div className="thread-empty-detail"><p>这个方向还没有留下经历。</p><p>先试一次，地图就会多一个属于你的节点。</p></div>}
           <div className="thread-next-stop">
             <span className="thread-next-dot" aria-hidden /><div><h4>{selected.goal ? selected.goal.status === 'completed' ? '这段心愿已经走完' : '沿心愿继续下一章' : '下一次探索，留给你来选'}</h4>
-              <p>{selected.goal ? '在心愿计划里查看章节、调整状态，再选择合适的条件出发。' : '带上这条线里的经历，和吱呀一起找一个相关的新玩法。'}</p>
+              <p>{selected.goal ? '去心愿计划里看看，接着上次继续。' : selected.stops.length ? '带着这些小收获，和吱呀找找下一个点子。' : '和吱呀聊聊，找一件你想试的小事。'}</p>
               {selected.goal ? <button type="button" className="thread-primary" onClick={onGoals}>查看心愿计划 →</button> : <button type="button" className="thread-primary" disabled={busy || executing} onClick={() => explore(selected)}>沿这条线继续探索 →</button>}
               {executing && selected.kind !== 'goal' && <small>先回到正在进行的任务，完成或放下后再探索。</small>}
             </div>

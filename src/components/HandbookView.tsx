@@ -129,8 +129,8 @@ export function HandbookView({ view, onClose, embedded = false, onStartQuest, bu
             ) : (
               <>
                 <CategoryStamps view={view} />
-                <BadgeWall badges={view.badges} />
-                <h3 className="font-hand text-fog text-[14px] mb-3">支线记录 · 点击展开看证物</h3>
+                <details className="handbook-achievements"><summary>我的成就 · 已点亮 {view.badges.filter(b => b.earned).length} 枚</summary><BadgeWall badges={view.badges} /></details>
+                <h3 className="font-hand text-fog text-[14px] mb-3">走过的小支线</h3>
                 <div className="space-y-2.5">
                   {view.quests.map((q) => (
                     <QuestRecordCard key={q.id} record={q} />
