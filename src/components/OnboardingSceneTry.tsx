@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { appUrl } from '../paths';
 
 /** Local rehearsal: no model calls, form entry, or changes to real records. */
 export function OnboardingSceneTry({ scene: _scene, onComplete }: { scene: 'home' | 'friends'; onComplete: () => void }) {
@@ -20,10 +21,13 @@ export function OnboardingSceneTry({ scene: _scene, onComplete }: { scene: 'home
     </div>
     {phase !== 'pick' && <div className="quick-demo-proof" aria-live="polite">
       {phase === 'submit' ? <>
-        <p id="quick-demo-instruction">先写下数字4，盖住。请朋友心想一个1到10的数，依次乘2、加8、除以2，再减去最初的数。最后揭晓：答案正是你写的4！</p>
-        <div className="quick-demo-work" aria-label="练习示例"><blockquote>我用7试了一遍：7 → 14 → 22 → 11 → 4。换个数字练熟，下次就能表演给朋友看。</blockquote></div>
+        <figure data-demo-current tabIndex={-1} className="quick-demo-tutorial" aria-label="戒指魔术教程预览">
+          <img src={appUrl('onboarding/ring-magic-tutorial.png')} width={454} height={258} alt="戒指魔术教程封面：演示者展示手势，画面标注3个戒指魔术和时长2分49秒。" />
+          <figcaption className="quick-guide-footnote">教程预览图</figcaption>
+        </figure>
+        <p id="quick-demo-instruction">试试戒指魔术，先从一个手势练起。</p>
         <p className="quick-guide-footnote">需要帮忙时，随时点「问问吱呀」。</p>
-        <button data-demo-current aria-describedby="quick-demo-instruction" className="walk-primary" onClick={() => { setPhase('saved'); onComplete(); }}>试着留下这次练习 →</button>
+        <button aria-describedby="quick-demo-instruction" className="walk-primary" onClick={() => { setPhase('saved'); onComplete(); }}>试着留下这次练习 →</button>
       </>
         : <div data-demo-current tabIndex={-1} className="quick-demo-saved" role="status"><strong>✓ 一次小小的探索，完成啦</strong><p>以后的小收获，都能在「我的手册 → 日常记录」里找到。</p></div>}
     </div>}

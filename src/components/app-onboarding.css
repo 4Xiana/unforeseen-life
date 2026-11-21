@@ -278,7 +278,10 @@
 .quick-demo h2 { margin: 4px 0 0; }
 .quick-demo button { width: 100%; margin-top: 16px; }
 .quick-demo-selected { display: inline-block; margin-top: 8px; }
-.quick-demo-work { background: var(--guide-selected); border-radius: var(--radius-control); padding: 14px 16px; margin: 12px 0; }
+.quick-demo-tutorial { margin: 0 0 16px; scroll-margin-block: 12px; border-radius: var(--radius-control); }
+.quick-demo-tutorial:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+.quick-demo-tutorial img { display: block; width: 100%; height: auto; border-radius: var(--radius-control); }
+.quick-demo-tutorial figcaption { margin-top: 8px; }
 .quick-demo-saved { padding: 14px; background: var(--guide-selected); border-radius: var(--radius-control); margin-top: 16px; }
 .quick-demo-saved p { margin-top: 4px; }
 .app-guide-compact .app-guide-real-form { margin-top: 0; }
