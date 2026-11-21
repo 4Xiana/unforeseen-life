@@ -21,6 +21,19 @@
 .basic-choice-group > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .basic-choice-group button { flex: 1; padding: 12px 10px; border: 1px solid var(--paper-edge); background: var(--card); border-radius: 12px; color: var(--ink-2); font-size: 14px; white-space: nowrap; }
 .basic-choice-group button[aria-pressed=true] { border-color: var(--moss-deep); background: #edf1e2; color: var(--moss-deep); }
+.basic-choice-group > .mbti-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mbti-grid button { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+.mbti-group { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.mbti-group.mbti-green { --mbti-color: #436a45; }
+.mbti-group.mbti-yellow { --mbti-color: #98722c; }
+.mbti-group.mbti-blue { --mbti-color: #3e6c85; }
+.mbti-group.mbti-purple { --mbti-color: #77538c; }
+.mbti-swatch { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; background: var(--mbti-color); }
+.mbti-code, .mbti-group-note, .identity-note { font-size: 13px; color: var(--ink-2); }
+.identity-note { margin-left: 8px; }
+.basic-choice-group > .mbti-controls { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.basic-choice-group .mbti-controls button { flex: none; border: 0; padding: 8px 0; background: transparent; color: var(--moss-deep); font-size: 13px; }
+.outcome-choice > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .basic-field { display: grid; gap: 8px; margin-top: 20px; font-size: 15px; }
 .basic-field input { width: 100%; min-width: 0; border: 1px solid var(--paper-edge); background: var(--card); border-radius: 12px; padding: 12px; font-size: 16px; color: var(--ink); }
 .basic-more { margin-top: 20px; font-size: 14px; color: var(--ink-2); }

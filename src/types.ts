@@ -148,6 +148,8 @@ export interface HandbookView {
 
 export type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
 import type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
+export type { MbtiType, ActivityPreference, DesiredOutcome } from '../server/agent/profile/identity-preferences';
+import type { MbtiType, ActivityPreference, DesiredOutcome } from '../server/agent/profile/identity-preferences';
 export type EnergyPref = '坐' | '慢' | '动' | 'any';
 export type SocialPref = 'solo' | 'pair' | 'group' | 'any';
 export type BudgetPref = 'free' | 'low' | 'any';
@@ -162,6 +164,9 @@ export interface UserProfile {
   createdAt?: string;
   updatedAt?: string;
   onboarded: boolean;
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;
@@ -176,6 +181,9 @@ export interface UserProfile {
 }
 
 export interface SaveProfileInput {
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;

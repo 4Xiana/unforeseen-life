@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { getClientId } from '../handbook';
 import { PreferenceFittingPanel } from './PreferenceFittingPanel';
+import { IdentityPreferences } from './IdentityPreferences';
+import { normalizeIdentityPreferences } from '../../server/agent/profile/identity-preferences';
 import type { UserProfile, SaveProfileInput, QuestPair, PairAnswer, EnergyPref, BudgetPref, NoveltyPref, SocialPref, MechanismPref } from '../types';
 import './preferences.css';
 
@@ -23,10 +25,11 @@ const noveltyOptions: { value: NoveltyPref; label: string }[] = [{ value: 1, lab
 const mechanismOptions: MechanismPref[] = ['收集图鉴', '随机委托', '视角重赋', '规则限制', '定点观察', '触感心流', '盲盒猜谜', '角色扮演', '连接动作', '留痕收尾'];
 const draftKey = () => `xian-basic-preferences:${getClientId()}`;
 function readBasic(initial: UserProfile): SaveProfileInput {
-  const base = { energy: initial.energy, budget: initial.budget, social: initial.social, novelty: initial.novelty, mechs: initial.mechs, interests: initial.interests, avoids: initial.avoids };
+  const base = { mbti: initial.mbti ?? null, activityPreference: initial.activityPreference ?? 'any', desiredOutcomes: initial.desiredOutcomes ?? [], energy: initial.energy, budget: initial.budget, social: initial.social, novelty: initial.novelty, mechs: initial.mechs, interests: initial.interests, avoids: initial.avoids };
   try {
     const draft = JSON.parse(sessionStorage.getItem(draftKey()) || '{}');
-    return { ...base, ...Object.fromEntries(Object.entries(draft).filter(([key]) => key in base)) };
+    const merged = { ...base, ...Object.fromEntries(Object.entries(draft).filter(([key]) => key in base)) };
+    return { ...merged, ...normalizeIdentityPreferences(merged) };
   } catch { return base; }
 }
 function ChoiceGroup<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
@@ -48,7 +51,7 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
     setSaving(true); setError(''); setSaved(false);
     try {
       // Only send basic fields. The independent fitting data is preserved by the server.
-      await onSave(input);
+      await onSave(compact ? { ...input, energy: initial.energy, budget: initial.budget, social: initial.social, novelty: initial.novelty, mechs: initial.mechs, interests: initial.interests, avoids: initial.avoids } : input);
       try { sessionStorage.removeItem(draftKey()); } catch { /* no draft */ }
       if (alive.current) { setDirty(false); setSaved(true); callback.current?.(); }
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : '暂时没能保存，请重试。'); }
@@ -56,9 +59,10 @@ function BasicPreferences({ initial, compact, onSave, onSaved }: { initial: User
   }}>
     <fieldset disabled={saving} className="basic-preferences-fields">
       <legend className="sr-only">基础喜好</legend>
-      <ChoiceGroup<EnergyPref> label="你喜欢怎样的节奏？" value={input.energy} options={energyOptions} onChange={value => change({ energy: input.energy === value ? 'any' : value })} />
-      <ChoiceGroup<BudgetPref> label="愿意为新体验花一点钱吗？" value={input.budget} options={budgetOptions} onChange={value => change({ budget: input.budget === value ? 'any' : value })} />
+      <IdentityPreferences value={input} onChange={change} />
       {!compact && <>
+        <ChoiceGroup<EnergyPref> label="你喜欢怎样的活动节奏？" value={input.energy} options={energyOptions} onChange={value => change({ energy: input.energy === value ? 'any' : value })} />
+        <ChoiceGroup<BudgetPref> label="愿意为新体验花一点钱吗？" value={input.budget} options={budgetOptions} onChange={value => change({ budget: input.budget === value ? 'any' : value })} />
         <ChoiceGroup<SocialPref> label="通常更喜欢和谁一起？" value={input.social} options={socialOptions} onChange={value => change({ social: input.social === value ? 'any' : value })} />
         <ChoiceGroup<NoveltyPref> label="希望玩法多一点什么？" value={input.novelty} options={noveltyOptions} onChange={value => change({ novelty: input.novelty === value ? 0 : value })} />
         <label className="basic-field">兴趣爱好（选填）<input maxLength={200} value={input.interests} placeholder="比如音乐、植物、做饭" onChange={e => change({ interests: e.target.value })} /></label>

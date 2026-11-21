@@ -5,6 +5,7 @@ import type { SeedMechanism, Seed } from '../skills/quest-library/seeds.js';
 import { QUEST_PAIRS, LEGACY_PAIRS } from './quest-pairs.js';
 import { FITTING_PAIRS, type PairAnswer, type PreferenceFitting } from './fitting-pairs.js';
 import { fitPreferences, renderFittingBrief } from './preference-model.js';
+import { normalizeIdentityPreferences, OUTCOME_OPTIONS, type MbtiType, type ActivityPreference, type DesiredOutcome } from './identity-preferences.js';
 
 // ── 玩家喜好档案：跨会话长期记忆 ──
 // 问题轴与种子库（seeds.ts）的筛/排标签严格对齐，避免问"抽象分类"锚不准：
@@ -22,6 +23,9 @@ export interface UserProfile {
   updatedAt: string;
   /** 是否完成过首次喜好引导（用于首访红点/提示，保存即置 true） */
   onboarded: boolean;
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   /** 体力档：坐 / 慢走慢节奏 / 中高强度 / 都行 */
   energy: EnergyPref;
   /** 新奇度档：0 都行；1 稳妥；2 新鲜；3 脑洞 */
@@ -43,6 +47,9 @@ export interface UserProfile {
 }
 
 export interface SaveProfileInput {
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;
@@ -98,6 +105,9 @@ const VALID_MECHS = MECHANISM_OPTIONS.map((m) => m.id);
 
 /** 清洗并收敛前端上送的字段，剔除非法枚举、限制长度 */
 export function normalizeProfileInput(raw: {
+  mbti?: unknown;
+  activityPreference?: unknown;
+  desiredOutcomes?: unknown;
   energy?: unknown;
   novelty?: unknown;
   social?: unknown;
@@ -140,7 +150,7 @@ export function normalizeProfileInput(raw: {
     }
   }
 
-  return { energy, novelty, social, budget, mechs, interests: cleanStr(raw.interests), avoids: cleanStr(raw.avoids), pairVotes: raw.pairVotes === undefined ? undefined : pairVotes };
+  return { ...normalizeIdentityPreferences(raw), energy, novelty, social, budget, mechs, interests: cleanStr(raw.interests), avoids: cleanStr(raw.avoids), pairVotes: raw.pairVotes === undefined ? undefined : pairVotes };
 }
 
 function defaultProfile(clientId: string): UserProfile {
@@ -150,6 +160,9 @@ function defaultProfile(clientId: string): UserProfile {
     createdAt: now,
     updatedAt: now,
     onboarded: false,
+    mbti: null,
+    activityPreference: 'any',
+    desiredOutcomes: [],
     energy: 'any',
     novelty: 0,
     social: 'any',
@@ -202,7 +215,7 @@ async function updateProfileStore(clientId: string, update: (existing: UserProfi
 /** 取档案：不存在时返回默认值（不提前落盘，等用户真正保存时再写） */
 export async function getProfile(clientId: string): Promise<UserProfile> {
   const store = await load();
-  const profile = store[clientId] ?? defaultProfile(clientId);
+  const profile = { ...defaultProfile(clientId), ...store[clientId] };
   return { ...profile, fitting: fitPreferences(profile.pairVotes) };
 }
 
@@ -218,6 +231,9 @@ export async function saveProfile(
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       onboarded: true,
+      mbti: input.mbti !== undefined ? input.mbti : existing?.mbti ?? null,
+      activityPreference: input.activityPreference ?? existing?.activityPreference ?? 'any',
+      desiredOutcomes: input.desiredOutcomes ?? existing?.desiredOutcomes ?? [],
       energy: input.energy,
       novelty: input.novelty,
       social: input.social,
@@ -251,6 +267,12 @@ export async function saveProfileFitting(clientId: string, rawVotes: unknown): P
 export function buildProfileBrief(p: UserProfile): string {
   if (!p.onboarded) return '';
   const lines: string[] = ['# 玩家喜好档案（跨次记得的长期画像，选卡务必按这些标签对齐）'];
+
+  if (p.mbti) lines.push(`- 用户自述 MBTI：${p.mbti}。仅作交流风格的弱参考，不推断固定兴趣、能力或社交需求，不据此限定任务。`);
+  if (p.activityPreference && p.activityPreference !== 'any') lines.push(`- 宏观动静偏好：${p.activityPreference === 'quiet' ? '喜静，偏爱安静从容的体验' : '喜动，偏爱动手行动、探索变化的体验'}。这不等于体力强度，也不等于内向或外向。`);
+  const outcomes = OUTCOME_OPTIONS.filter(option => p.desiredOutcomes?.includes(option.value)).map(option => option.label);
+  if (outcomes.length) lines.push(`- 希望从吱呀获得：${outcomes.join('、')}。围绕这些期待设计可做的小事；多选表示可以尝试不同方向，不要求每个任务同时满足全部期待。`);
+  lines.push('用户明确的期待、实际选择与本轮表达优先于 MBTI 标签，不将自述类型当作人格测评结论。');
 
   lines.push(
     `- 体力档：${p.energy === 'any' ? '未指定，按现场体力给' : ENERGY_LABELS[p.energy]}。`,

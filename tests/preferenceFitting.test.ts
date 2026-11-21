@@ -1,6 +1,6 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -14,6 +14,51 @@ const { getProfile, saveProfile, saveProfileFitting, normalizeProfileInput, buil
 after(() => rmSync(dir, { recursive: true, force: true }));
 const all = (answer: PairAnswer) => Object.fromEntries(FITTING_PAIRS.map(pair => [pair.id, answer]));
 const basic = normalizeProfileInput({ energy: '慢', novelty: 2, social: 'solo', budget: 'free', mechs: ['定点观察'], avoids: '不拍照', interests: '植物' });
+
+test('宏观喜好清洗非法值、去重期待，并允许旧请求省略新增字段', () => {
+  const value = normalizeProfileInput({ mbti: ' infp ', activityPreference: 'quiet', desiredOutcomes: ['grow', 'relax', 'relax', 'unknown', { value: 'connect' }] });
+  assert.equal(value.mbti, 'INFP');
+  assert.equal(value.activityPreference, 'quiet');
+  assert.deepEqual(value.desiredOutcomes, ['relax', 'grow']);
+  const invalid = normalizeProfileInput({ mbti: 'NF', activityPreference: 'high', desiredOutcomes: 'relax' });
+  assert.equal(invalid.mbti, null);
+  assert.equal(invalid.activityPreference, 'any');
+  assert.deepEqual(invalid.desiredOutcomes, []);
+  assert.equal(basic.mbti, undefined);
+  assert.equal(basic.activityPreference, undefined);
+  assert.equal(basic.desiredOutcomes, undefined);
+});
+
+test('人格、动静与期待进入推荐摘要，兼容旧档案并独立于体力与问卷保存', async () => {
+  const input = { ...basic, ...normalizeProfileInput({ ...basic, mbti: 'INFP', activityPreference: 'active', desiredOutcomes: ['relax', 'grow'] }) };
+  const saved = await saveProfile('identity', input);
+  assert.equal(saved.energy, '慢');
+  assert.equal(saved.activityPreference, 'active');
+  const brief = buildProfileBrief(saved);
+  assert.match(brief, /用户自述 MBTI：INFP/);
+  assert.match(brief, /喜动/);
+  assert.match(brief, /放松、成长/);
+  assert.match(brief, /不推断固定兴趣、能力或社交需求/);
+  await saveProfileFitting('identity', all('tie'));
+  const legacySave = await saveProfile('identity', basic);
+  assert.equal(legacySave.mbti, 'INFP');
+  assert.equal(legacySave.activityPreference, 'active');
+  assert.deepEqual(legacySave.desiredOutcomes, ['relax', 'grow']);
+  assert.equal(legacySave.fitting?.ties, 30);
+  const cleared = await saveProfile('identity', { ...basic, mbti: null, activityPreference: 'any', desiredOutcomes: [] });
+  assert.equal(cleared.mbti, null);
+  assert.deepEqual(cleared.desiredOutcomes, []);
+  assert.equal(cleared.activityPreference, 'any');
+  assert.equal(cleared.fitting?.ties, 30);
+  const legacyDir = mkdtempSync(path.join(dir, 'legacy-'));
+  writeFileSync(path.join(legacyDir, 'profile.json'), JSON.stringify({ legacy: { clientId: 'legacy', onboarded: true, ...basic, pairVotes: {} } }));
+  const output = execFileSync(path.resolve('server/node_modules/.bin/tsx'), ['-e', `import { getProfile } from './server/agent/profile/profile.ts'; getProfile('legacy').then(p => console.log(JSON.stringify(p)));`], { env: { ...process.env, XIAN_DATA_DIR: legacyDir }, encoding: 'utf8' });
+  const restored = JSON.parse(output);
+  assert.equal(restored.mbti, null);
+  assert.equal(restored.activityPreference, 'any');
+  assert.deepEqual(restored.desiredOutcomes, []);
+  assert.equal(restored.avoids, '不拍照');
+});
 
 test('30组匹配时长与预算，六方向均有覆盖，旧题保持兼容', () => {
   assert.equal(FITTING_PAIRS.length, 30);

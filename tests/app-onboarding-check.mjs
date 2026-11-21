@@ -81,7 +81,7 @@ try {
   await step(1);
   const results = [];
   for (const [width, height] of [[320, 568], [390, 844], [844, 390], [1280, 900]]) {
-    profile = { ...profile, energy: '慢', budget: 'free', interests: '', onboarded: false };
+    profile = { ...profile, mbti: null, activityPreference: 'any', desiredOutcomes: [], energy: '慢', budget: 'free', interests: '', onboarded: false };
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ reducedMotion: width === 320 ? 'reduce' : 'no-preference' });
     await loadGuide(); await step(1); await layout();
@@ -92,23 +92,46 @@ try {
     await page.getByRole('status').filter({ hasText: '一次小小的探索，完成啦' }).waitFor();
     await layout();
     await button('聊聊我的喜好 →').click(); await step(3); await layout();
-    assert.equal(await page.locator('.basic-choice-group').count(), 2);
+    assert.equal(await page.locator('.basic-choice-group').count(), 3);
     assert.equal(await page.locator('.preference-fitting').count(), 0, 'No long questionnaire during onboarding');
-    await button('安静坐着').click();
-    await button('安静坐着').click();
-    assert.equal(await button('安静坐着').getAttribute('aria-pressed'), 'false');
-    await button('慢慢活动').click();
-    await button('花一点也可以').click();
+    assert.equal(await button('花一点也可以').count(), 0, 'No budget question during onboarding');
+    if (width === 320) {
+      for (const [group, role] of [['绿人组', 'INFP · 调停者'], ['黄人组', 'ISTP · 鉴赏家'], ['蓝人组', 'ISTJ · 物流师'], ['紫人组', 'INTJ · 建筑师']]) {
+        await page.getByRole('button', { name: new RegExp('^' + group) }).click();
+        assert.equal(await page.locator('.mbti-grid button').count(), 4);
+        await button(role).click();
+        assert.equal(await button(role).getAttribute('aria-pressed'), 'true');
+        await button('重新选分组').click();
+      }
+      await button('还不确定').click();
+    }
+    await page.getByRole('button', { name: /^绿人组/ }).click();
+    await button('INFP · 调停者').click();
+    await button('喜静').click(); await button('喜静').click();
+    assert.equal(await button('喜静').getAttribute('aria-pressed'), 'false');
+    await button('喜动').click();
+    await button('放松').click(); await button('成长').click();
+    await button('表达').click(); await button('表达').click();
+    assert.equal(await button('表达').getAttribute('aria-pressed'), 'false');
+    if (width === 390) {
+      await page.reload({ waitUntil: 'domcontentloaded' }); await step(3);
+      assert.equal(await button('INFP · 调停者').getAttribute('aria-pressed'), 'true');
+      assert.equal(await button('喜动').getAttribute('aria-pressed'), 'true');
+      assert.equal(await button('放松').getAttribute('aria-pressed'), 'true');
+      assert.equal(await button('成长').getAttribute('aria-pressed'), 'true');
+    }
+    await layout();
     if (width === 390) {
       await page.screenshot({ path: `${output}/preferences.png` });
       failSave = true;
       await button('选好啦，继续 →').click();
       await page.getByRole('alert').waitFor(); await step(3);
-      assert.equal(await button('慢慢活动').getAttribute('aria-pressed'), 'true');
+      assert.equal(await button('喜动').getAttribute('aria-pressed'), 'true');
       failSave = false;
     }
     await button('选好啦，继续 →').click(); await step(4); await layout();
-    assert.equal(profile.energy, '慢'); assert.equal(profile.budget, 'low'); assert.equal(profile.avoids, '不拍照');
+    assert.equal(profile.energy, '慢'); assert.equal(profile.budget, 'free'); assert.equal(profile.avoids, '不拍照');
+    assert.equal(profile.mbti, 'INFP'); assert.equal(profile.activityPreference, 'active'); assert.deepEqual(profile.desiredOutcomes, ['relax', 'grow']);
     assert.deepEqual(profile.mechs, ['定点观察']); assert.deepEqual(profile.pairVotes, { preserved: 'A' });
     await button('重新捡起画画').click();
     await page.setViewportSize({ width, height: Math.min(height, 400) });

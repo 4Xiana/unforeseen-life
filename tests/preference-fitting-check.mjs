@@ -20,7 +20,7 @@ const output = '.cache/preference-fitting';
 mkdirSync(output, { recursive: true });
 const button = name => page.getByRole('button', { name, exact: true });
 const card = side => page.getByRole('button', { name: new RegExp(`^选${side}：`) });
-let profile = { clientId: client, onboarded: true, energy: '慢', budget: 'free', social: 'solo', novelty: 2, mechs: ['定点观察'], interests: '植物', avoids: '不拍照', pairVotes: { q1: 'B' }, fitting: fitPreferences({}) };
+let profile = { clientId: client, onboarded: true, mbti: 'INFP', activityPreference: 'quiet', desiredOutcomes: ['relax'], energy: '慢', budget: 'free', social: 'solo', novelty: 2, mechs: ['定点观察'], interests: '植物', avoids: '不拍照', pairVotes: { q1: 'B' }, fitting: fitPreferences({}) };
 const handbook = { clientId: client, quests: [], badges: [], stats: { total: 0, weekCount: 0, earnedCount: 0, byCategory: { explore: 0, organize: 0, create: 0, connect: 0, sense: 0 } } };
 const writes = [], errors = [];
 let failSave = false, holdSave = null, originalClient, originalSession;
@@ -128,10 +128,13 @@ try {
   assert.equal(await card('B').getAttribute('aria-pressed'), 'false');
   await page.getByRole('tab', { name: '基础喜好', exact: true }).click();
   await page.getByRole('textbox', { name: '不想做的事（选填）', exact: true }).fill('不拍照，不与陌生人互动');
+  await button('喜动').click(); await button('成长').click();
   await button('保存基础喜好').click();
   await page.getByRole('status').filter({ hasText: '基础喜好已保存' }).waitFor();
   assert.deepEqual(profile.pairVotes, oldVotes);
   assert.equal(profile.avoids, '不拍照，不与陌生人互动');
+  assert.equal(profile.mbti, 'INFP'); assert.equal(profile.activityPreference, 'active');
+  assert.deepEqual(profile.desiredOutcomes, ['relax', 'grow']);
   // A response arriving after exit cannot reopen the questionnaire or erase a newer draft.
   await page.evaluate(({ key, pairs }) => localStorage.setItem(key, JSON.stringify({ version: 'v1', answers: Object.fromEntries(pairs.map(p => [p.id, 'tie'])), index: 29 })), { key, pairs });
   await page.getByRole('tab', { name: '喜好配置拟合', exact: true }).click();
