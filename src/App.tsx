@@ -153,16 +153,14 @@ export default function App() {
 
   const isInputDisabled = isStreaming || isConnecting || isRestoring;
   const demoTaskPending = useRef(false);
-  const demoRecommendPending = useRef(false);
-  useEffect(() => {
-    if (!demoRecommendPending.current || isInputDisabled || fsmState !== 'S0') return;
-    demoRecommendPending.current = false;
-    startNewSession('我想在家试一条有趣的支线，帮我推荐几件能做的小事吧');
-  }, [isInputDisabled, fsmState, startNewSession]);
   useEffect(() => {
     if (!demoTaskPending.current || isInputDisabled || fsmState !== 'S1' || !proposedActivities.length) return;
-    demoTaskPending.current = false;
-    selectActivity(proposedActivities[0].id);
+    // The local response closes in this turn; select after its reader releases the request guard.
+    const frame = requestAnimationFrame(() => {
+      demoTaskPending.current = false;
+      selectActivity(proposedActivities[0].id);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [isInputDisabled, fsmState, proposedActivities, selectActivity]);
   useEffect(() => {
     if (!isDemoMode()) return;
@@ -170,7 +168,6 @@ export default function App() {
       const action = (event as CustomEvent<{ action: DemoAction }>).detail?.action;
       if (!action || action.startsWith('fill-') || action === 'fit-preview') return;
       demoTaskPending.current = false;
-      demoRecommendPending.current = false;
       if (action === 'onboarding') { openGuide(); return; }
       if (onboarding.active) onboarding.close();
       setAssistantOpen(false); setImmersive(false);
@@ -184,8 +181,7 @@ export default function App() {
       if (action === 'task' && fsmState === 'S1' && proposedActivities.length) selectActivity(proposedActivities[0].id);
       else {
         demoTaskPending.current = action === 'task';
-        if (fsmState === 'S2') { demoRecommendPending.current = true; abandon(); }
-        else startNewSession('我想在家试一条有趣的支线，帮我推荐几件能做的小事吧');
+        startNewSession('我想在家试一条有趣的支线，帮我推荐几件能做的小事吧');
       }
     };
     window.addEventListener('xian-demo-action', handle);

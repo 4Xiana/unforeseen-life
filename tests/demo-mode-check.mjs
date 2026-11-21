@@ -57,7 +57,7 @@ try {
   await navigate('task');
   await page.getByRole('region', { name: '当前第1步', exact: true }).waitFor();
   await navigate('recommend');
-  await button('演示：换一批支线').waitFor();
+  await button('换一批').waitFor();
   await navigate('task');
   await page.getByRole('region', { name: '当前第1步', exact: true }).waitFor();
   await button('问问吱呀').click();
@@ -111,8 +111,8 @@ try {
   assert.equal(await page.locator('.goals-stamps .earned').count(), 2);
   await page.screenshot({ path: output + '/goal.png' });
   await navigate('recommend');
-  await button('演示：换一批支线').waitFor();
-  await button('演示：换一批支线').click();
+  await button('换一批').waitFor();
+  await button('换一批').click();
   await page.getByText('用三种颜色记下今天', { exact: true }).waitFor();
   await navigate('onboarding'); await page.locator('.app-guide').waitFor();
   await assertMobileShell(page);

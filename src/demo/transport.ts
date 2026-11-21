@@ -214,6 +214,9 @@ export function createDemoFetch({ storage, latencyMs = 160, clientId = 'xian-dem
     if (path === '/api/quest-pairs' && method === 'GET') return json(FITTING_PAIRS);
     if (path === '/api/handbook' && method === 'GET') return json(refreshDemoHandbook(state.handbook));
     if (path === '/api/session' && method === 'POST') {
+      // Presenter navigation may replace a running sample; release its chapter before starting afresh.
+      const previous = state.activeSessionId && state.sessions[state.activeSessionId];
+      if (previous && previous.snapshot.fsmState === 'S2') turn(previous, { type: 'abandon' });
       const sessionId = id('demo-session');
       state.sessions[sessionId] = { sessionId, clientId: state.profile.clientId, status: 'idle', snapshot: { fsmState: 'S0', proposedActivities: [], selectedActivity: null, currentStepIndex: 0 }, events: [], evidence: [], round: 0 };
       state.activeSessionId = sessionId;

@@ -89,6 +89,11 @@ test('心愿草稿确认、继续章节、放下和完成均能持久恢复', as
   assert.equal((await r.json(`/goals/${draft.id}`)).inProgress.sessionId, sessionId);
   await r.turn(sessionId, { type: 'abandon' });
   assert.equal((await r.json(`/goals/${draft.id}`)).inProgress, undefined);
+  ({ sessionId } = await r.json('/session', 'POST', {}));
+  await r.turn(sessionId, { type: 'text', goalId: draft.id, text: '继续心愿' });
+  await r.json('/session', 'POST', {});
+  assert.equal((await r.json(`/goals/${draft.id}`)).inProgress, undefined, 'Presenter switching releases the previous sample chapter');
+  assert.equal((await r.json(`/session/${sessionId}`)).snapshot.fsmState, 'S0');
   for (let index = 0; index < 3; index++) {
     ({ sessionId } = await r.json('/session', 'POST', {}));
     await r.turn(sessionId, { type: 'text', goalId: draft.id, text: '继续心愿' });
