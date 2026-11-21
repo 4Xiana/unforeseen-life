@@ -155,7 +155,9 @@ cp server/.env.example server/.env
 
 模板使用 DeepSeek 官方服务 `https://api.deepseek.com` 和 `deepseek-flash`。DeepSeek 请求关闭思考模式，以保持即时对话和强制工具验收的兼容；主对话、心愿规划、灵感整理和证物验收共用配置。模型名称与能力以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。
 
-产品的 `server/.env` 中模型配置优先于沙箱继承的模型默认值，平台注入的 `PORT` 始终优先。密钥文件不入库，文件权限建议设为 `600`。使用 DeepSeek 时设置 `OPENAI_AGENTS_DISABLE_TRACING=1`，关闭 OpenAI 托管追踪，保留产品自身的本地调试记录。更换服务时应同时核对工具调用、流式输出和照片输入的兼容性。
+产品的 `server/.env` 中对话模型与 MiniMax 语音配置优先于沙箱继承的默认值，平台注入的 `PORT` 始终优先。密钥文件不入库，文件权限建议设为 `600`。使用 DeepSeek 时设置 `OPENAI_AGENTS_DISABLE_TRACING=1`，关闭 OpenAI 托管追踪，保留产品自身的本地调试记录。更换服务时应同时核对工具调用、流式输出和照片输入的兼容性。
+
+MiniMax 语音使用 `speech-2.8-turbo` 与 `qiaopi_mengmei`（俏皮萌妹），供沉浸对话中的朗读及「听听吱呀的新声音」使用。后端仅在官方返回成功状态及有效音频时响应 MP3；配置密钥本身不代表服务已验证通过。若官方返回 `2049: invalid api key`，需要在开放平台更新有效接口密钥后重载产品。
 
 ### 本地开发
 

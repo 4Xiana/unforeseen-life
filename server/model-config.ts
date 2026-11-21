@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parse } from 'dotenv';
 
-const LOCAL_MODEL_KEYS = new Set(['OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL', 'OPENAI_USE_CHAT_COMPLETIONS', 'OPENAI_AGENTS_DISABLE_TRACING']);
+const LOCAL_MODEL_KEYS = new Set(['OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL', 'OPENAI_USE_CHAT_COMPLETIONS', 'OPENAI_AGENTS_DISABLE_TRACING', 'MINIMAX_API_KEY', 'MINIMAX_API_BASE', 'MINIMAX_TTS_MODEL', 'MINIMAX_VOICE_ID']);
 
 /** Product model credentials take precedence over unrelated sandbox defaults; PORT stays platform-owned. */
 export function loadServerEnvironment(filename = '.env', env: NodeJS.ProcessEnv = process.env) {
