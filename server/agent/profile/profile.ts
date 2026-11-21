@@ -2,7 +2,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { DATA_DIR } from '../../data-path.js';
 import type { SeedMechanism, Seed } from '../skills/quest-library/seeds.js';
-import { QUEST_PAIRS } from './quest-pairs.js';
+import { QUEST_PAIRS, LEGACY_PAIRS } from './quest-pairs.js';
+import { FITTING_PAIRS, type PairAnswer, type PreferenceFitting } from './fitting-pairs.js';
+import { fitPreferences, renderFittingBrief } from './preference-model.js';
+import { normalizeIdentityPreferences, OUTCOME_OPTIONS, type MbtiType, type ActivityPreference, type DesiredOutcome } from './identity-preferences.js';
 
 // ── 玩家喜好档案：跨会话长期记忆 ──
 // 问题轴与种子库（seeds.ts）的筛/排标签严格对齐，避免问"抽象分类"锚不准：
@@ -20,6 +23,9 @@ export interface UserProfile {
   updatedAt: string;
   /** 是否完成过首次喜好引导（用于首访红点/提示，保存即置 true） */
   onboarded: boolean;
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   /** 体力档：坐 / 慢走慢节奏 / 中高强度 / 都行 */
   energy: EnergyPref;
   /** 新奇度档：0 都行；1 稳妥；2 新鲜；3 脑洞 */
@@ -34,11 +40,16 @@ export interface UserProfile {
   interests: string;
   /** 雷点 / 不想要的（自由填写原文，推荐时务必绕开） */
   avoids: string;
-  /** Pair-wise 快速对比的选择：pairId -> 选中 A/B；用来拟合各维度的优先级 */
-  pairVotes: Record<string, 'A' | 'B'>;
+  /** Pairwise 对比：明确选择、平局和跳过分别保存。 */
+  pairVotes: Record<string, PairAnswer>;
+  fitting?: PreferenceFitting;
+  fittingUpdatedAt?: string;
 }
 
 export interface SaveProfileInput {
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;
@@ -46,7 +57,7 @@ export interface SaveProfileInput {
   mechs: SeedMechanism[];
   interests?: string;
   avoids?: string;
-  pairVotes?: Record<string, 'A' | 'B'>;
+  pairVotes?: Record<string, PairAnswer>;
 }
 
 export const ENERGY_LABELS: Record<Exclude<EnergyPref, 'any'>, string> = {
@@ -94,6 +105,9 @@ const VALID_MECHS = MECHANISM_OPTIONS.map((m) => m.id);
 
 /** 清洗并收敛前端上送的字段，剔除非法枚举、限制长度 */
 export function normalizeProfileInput(raw: {
+  mbti?: unknown;
+  activityPreference?: unknown;
+  desiredOutcomes?: unknown;
   energy?: unknown;
   novelty?: unknown;
   social?: unknown;
@@ -126,17 +140,17 @@ export function normalizeProfileInput(raw: {
   const cleanStr = (v: unknown) =>
     typeof v === 'string' ? v.trim().slice(0, 200) : '';
 
-  // pairVotes：只保留已知 pairId、值仅接受 'A'/'B'
-  const pairVotes: Record<string, 'A' | 'B'> = {};
+  // 只接受已知题目及四种字面答案，不能把数组等类型强转为答案。
+  const pairVotes: Record<string, PairAnswer> = {};
   if (raw.pairVotes && typeof raw.pairVotes === 'object') {
     for (const [k, v] of Object.entries(raw.pairVotes as Record<string, unknown>)) {
-      if ((v === 'A' || v === 'B') && QUEST_PAIRS.some((q) => q.id === k)) {
-        pairVotes[k] = v;
+      if (typeof v === 'string' && ['A', 'B', 'tie', 'skip'].includes(v) && QUEST_PAIRS.some((q) => q.id === k)) {
+        pairVotes[k] = v as PairAnswer;
       }
     }
   }
 
-  return { energy, novelty, social, budget, mechs, interests: cleanStr(raw.interests), avoids: cleanStr(raw.avoids), pairVotes };
+  return { ...normalizeIdentityPreferences(raw), energy, novelty, social, budget, mechs, interests: cleanStr(raw.interests), avoids: cleanStr(raw.avoids), pairVotes: raw.pairVotes === undefined ? undefined : pairVotes };
 }
 
 function defaultProfile(clientId: string): UserProfile {
@@ -146,6 +160,9 @@ function defaultProfile(clientId: string): UserProfile {
     createdAt: now,
     updatedAt: now,
     onboarded: false,
+    mbti: null,
+    activityPreference: 'any',
+    desiredOutcomes: [],
     energy: 'any',
     novelty: 0,
     social: 'any',
@@ -162,32 +179,44 @@ function defaultProfile(clientId: string): UserProfile {
 const DATA_PATH = path.join(DATA_DIR, 'profile.json');
 
 let cache: Record<string, UserProfile> | null = null;
+let loading: Promise<Record<string, UserProfile>> | null = null;
 let writeChain: Promise<void> = Promise.resolve();
 
 async function load(): Promise<Record<string, UserProfile>> {
   if (cache) return cache;
-  try {
-    const raw = await fs.readFile(DATA_PATH, 'utf-8');
-    cache = JSON.parse(raw) as Record<string, UserProfile>;
-  } catch {
-    cache = {};
-  }
-  return cache!;
+  if (!loading) loading = (async () => {
+    try {
+      cache = JSON.parse(await fs.readFile(DATA_PATH, 'utf-8')) as Record<string, UserProfile>;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      cache = {};
+    }
+    return cache!;
+  })().finally(() => { loading = null; });
+  return loading;
 }
 
-async function persist() {
-  const snapshot = JSON.stringify(cache, null, 2);
-  writeChain = writeChain.then(async () => {
+// Serialize read/modify/write together; failed disk writes never publish a new in-memory profile.
+async function updateProfileStore(clientId: string, update: (existing: UserProfile | undefined) => UserProfile) {
+  const operation = writeChain.then(async () => {
+    const store = await load();
+    const next = update(store[clientId]);
+    const snapshot = { ...store, [clientId]: next };
     await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
-    await fs.writeFile(DATA_PATH, snapshot, 'utf-8');
+    await fs.writeFile(`${DATA_PATH}.tmp`, JSON.stringify(snapshot, null, 2), 'utf-8');
+    await fs.rename(`${DATA_PATH}.tmp`, DATA_PATH);
+    cache = snapshot;
+    return { ...next, fitting: fitPreferences(next.pairVotes) };
   });
-  return writeChain;
+  writeChain = operation.then(() => {}, () => {});
+  return operation;
 }
 
 /** 取档案：不存在时返回默认值（不提前落盘，等用户真正保存时再写） */
 export async function getProfile(clientId: string): Promise<UserProfile> {
   const store = await load();
-  return store[clientId] ?? defaultProfile(clientId);
+  const profile = { ...defaultProfile(clientId), ...store[clientId] };
+  return { ...profile, fitting: fitPreferences(profile.pairVotes) };
 }
 
 /** 新建或更新档案（首访引导保存即 onboarded=true） */
@@ -195,26 +224,42 @@ export async function saveProfile(
   clientId: string,
   input: SaveProfileInput,
 ): Promise<UserProfile> {
-  const store = await load();
-  const existing = store[clientId];
-  const now = new Date().toISOString();
-  const next: UserProfile = {
-    clientId,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-    onboarded: true,
-    energy: input.energy,
-    novelty: input.novelty,
-    social: input.social,
-    budget: input.budget,
-    mechs: input.mechs,
-    interests: input.interests ?? '',
-    avoids: input.avoids ?? '',
-    pairVotes: input.pairVotes ?? {},
-  };
-  store[clientId] = next;
-  await persist();
-  return next;
+  return updateProfileStore(clientId, existing => {
+    const now = new Date().toISOString();
+    const next: UserProfile = {
+      clientId,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      onboarded: true,
+      mbti: input.mbti !== undefined ? input.mbti : existing?.mbti ?? null,
+      activityPreference: input.activityPreference ?? existing?.activityPreference ?? 'any',
+      desiredOutcomes: input.desiredOutcomes ?? existing?.desiredOutcomes ?? [],
+      energy: input.energy,
+      novelty: input.novelty,
+      social: input.social,
+      budget: input.budget,
+      mechs: input.mechs,
+      interests: input.interests ?? '',
+      avoids: input.avoids ?? '',
+      pairVotes: input.pairVotes ?? existing?.pairVotes ?? {},
+      fittingUpdatedAt: existing?.fittingUpdatedAt,
+    };
+    return next;
+  });
+}
+
+/** Fitting updates only comparison data; it cannot replace explicit basic preferences. */
+export async function saveProfileFitting(clientId: string, rawVotes: unknown): Promise<UserProfile> {
+  if (!rawVotes || typeof rawVotes !== 'object' || Array.isArray(rawVotes)) throw new Error('请完成问卷后再保存，拿不准的可以跳过。');
+  const raw = rawVotes as Record<string, unknown>;
+  if (!FITTING_PAIRS.every(pair => typeof raw[pair.id] === 'string' && ['A', 'B', 'tie', 'skip'].includes(raw[pair.id] as string))) throw new Error('还有未回答的题目，可以选择跳过后再保存。');
+  const votes = Object.fromEntries(FITTING_PAIRS.map(pair => [pair.id, raw[pair.id] as PairAnswer]));
+  return updateProfileStore(clientId, stored => {
+    const existing = stored ?? defaultProfile(clientId);
+    const pairVotes = { ...existing.pairVotes, ...votes };
+    const next = { ...existing, onboarded: true, updatedAt: new Date().toISOString(), fittingUpdatedAt: new Date().toISOString(), pairVotes };
+    return next;
+  });
 }
 
 // ── 喂给吱呀的"玩家喜好"摘要（注入每轮运行时上下文，口径直指种子标签）──────────
@@ -222,6 +267,12 @@ export async function saveProfile(
 export function buildProfileBrief(p: UserProfile): string {
   if (!p.onboarded) return '';
   const lines: string[] = ['# 玩家喜好档案（跨次记得的长期画像，选卡务必按这些标签对齐）'];
+
+  if (p.mbti) lines.push(`- 用户自述 MBTI：${p.mbti}。仅作交流风格的弱参考，不推断固定兴趣、能力或社交需求，不据此限定任务。`);
+  if (p.activityPreference && p.activityPreference !== 'any') lines.push(`- 宏观动静偏好：${p.activityPreference === 'quiet' ? '喜静，偏爱安静从容的体验' : '喜动，偏爱动手行动、探索变化的体验'}。这不等于体力强度，也不等于内向或外向。`);
+  const outcomes = OUTCOME_OPTIONS.filter(option => p.desiredOutcomes?.includes(option.value)).map(option => option.label);
+  if (outcomes.length) lines.push(`- 希望从吱呀获得：${outcomes.join('、')}。围绕这些期待设计可做的小事；多选表示可以尝试不同方向，不要求每个任务同时满足全部期待。`);
+  lines.push('用户明确的期待、实际选择与本轮表达优先于 MBTI 标签，不将自述类型当作人格测评结论。');
 
   lines.push(
     `- 体力档：${p.energy === 'any' ? '未指定，按现场体力给' : ENERGY_LABELS[p.energy]}。`,
@@ -245,7 +296,7 @@ export function buildProfileBrief(p: UserProfile): string {
   }
 
   // 时间爬坡·真实任务二选一：按"10 分钟→一整天"列出 TA 在每个时长档的取舍
-  const votedPairs = QUEST_PAIRS.filter((q) => p.pairVotes[q.id]);
+  const votedPairs = LEGACY_PAIRS.filter((q) => p.pairVotes[q.id] === 'A' || p.pairVotes[q.id] === 'B');
   if (votedPairs.length > 0) {
     const choices = votedPairs.map((q) => {
       const chosen: Seed = p.pairVotes[q.id] === 'A' ? q.a : q.b;
@@ -270,6 +321,9 @@ export function buildProfileBrief(p: UserProfile): string {
       `- 被选任务标签信号（命中的支线加权）：类型 ${tally(chosenSeeds.map((s) => s.cat))}；机制 ${tally(chosenSeeds.map((s) => s.mech))}；体力 ${tally(chosenSeeds.map((s) => s.energy))}；新奇度 ${tally(chosenSeeds.map((s) => String(s.nov)))}。`,
     );
   }
+
+  const fitted = renderFittingBrief(fitPreferences(p.pairVotes));
+  if (fitted) lines.push(fitted);
 
   lines.push('（这是长期喜好；与本局临时的时间/地点/天气冲突时，两者都要兼顾。）');
   return lines.join('\n');

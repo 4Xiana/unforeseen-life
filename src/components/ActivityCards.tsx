@@ -40,7 +40,7 @@ function ActivityCardVertical({ activity, i, onSelect, disabled, locked }: {
         animationDelay: `${i * 80}ms`,
       }}
     >
-      <div className="activity-card-content flex items-start gap-2 sm:gap-3 pr-5 sm:pr-7">
+      <div className="activity-card-content flex items-start gap-2 pr-5">
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 font-display hollow-num"
           style={{
@@ -86,7 +86,7 @@ export function ActivityCards({ activities, onSelect, disabled, locked }: Props)
   if (activities.length === 0) return null;
 
   return (
-    <div className="activity-list my-3 sm:my-5 animate-fade-in">
+    <div className="activity-list my-3 animate-fade-in">
       <div className="section-label mb-3 px-1">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-fog">
           <path d="M6 1L7.5 4.5L11 5L8.5 7.5L9 11L6 9.5L3 11L3.5 7.5L1 5L4.5 4.5L6 1Z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round"/>

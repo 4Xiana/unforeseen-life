@@ -36,3 +36,7 @@ docs/screenshots.zip
 *.njsproj
 *.sln
 *.sw?
+
+# Platform runtime logs
+.asteam-product.log*
+.cache/

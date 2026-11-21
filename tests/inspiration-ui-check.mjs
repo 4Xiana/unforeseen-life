@@ -18,7 +18,7 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base);
-    await page.getByRole('button', { name: '跳过引导' }).click();
+    await page.getByRole('button', { name: '稍后再看' }).click();
     await open(page);
     const raw = '我想用三片落叶做秋日拼贴，在家15分钟，不拍照。';
     await page.getByRole('textbox', { name: '这次想留下什么灵感？' }).fill(raw);
@@ -33,9 +33,9 @@ try {
     assert.equal(await card.locator('.inspiration-original').innerText(), raw);
     if (width === 320) {
       await page.getByRole('button', { name: '关闭我的手册' }).click();
-      if (!await page.getByRole('textbox', { name: '位置、空闲时间和同行的人' }).count()) await page.getByRole('button', { name: '改用键盘输入' }).click();
-      await page.getByRole('textbox', { name: '位置、空闲时间和同行的人' }).fill('我在家有15分钟，一个人，不花钱');
-      await page.getByRole('button', { name: '发送，让吱呀带你出发' }).click();
+      if (!await page.getByRole('textbox', { name: '告诉吱呀，你想试点什么' }).count()) await page.getByRole('button', { name: '打字告诉吱呀' }).click();
+      await page.getByRole('textbox', { name: '告诉吱呀，你想试点什么' }).fill('我在家有15分钟，一个人，不花钱');
+      await page.getByRole('button', { name: '发送想法，和吱呀一起找' }).click();
       await page.locator('.ticket-card').filter({ hasText: `我的秋日拼贴${width}` }).waitFor();
       assert.equal(await page.locator('.ticket-card').count(), 2);
       assert.match(await page.locator('.ticket-card').first().innerText(), /你收藏的灵感/);

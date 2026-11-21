@@ -56,7 +56,7 @@ export function QuestRecordCard({ record }: { record: QuestRecord }) {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="w-full text-left px-3 sm:px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-paper-2/40 transition-colors"
+        className="w-full text-left px-3 py-3.5 flex items-center justify-between gap-3 hover:bg-paper-2/40 transition-colors"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -84,7 +84,7 @@ export function QuestRecordCard({ record }: { record: QuestRecord }) {
       </button>
 
       {open && hasDetails && (
-        <div className="px-3 sm:px-4 pb-4 space-y-3 border-t border-fog-light/40 pt-3">
+        <div className="px-3 pb-4 space-y-3 border-t border-fog-light/40 pt-3">
           {record.stepDetails!.map((step, i) => (
             <div key={i} className="space-y-1.5">
               <div className="flex items-center gap-2">

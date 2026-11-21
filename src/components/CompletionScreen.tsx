@@ -21,7 +21,7 @@ export function CompletionScreen({ reward, totalCount, onDismiss, onViewHandbook
         <div className="tape tape-top-left" style={{ width: '60px', height: '18px', background: 'rgba(114,148,81,0.3)' }}/>
         <div className="tape tape-top-right" style={{ width: '60px', height: '18px', background: 'rgba(63,162,143,0.28)' }}/>
 
-        <div className="completion-card bg-card border border-ink/[0.07] p-5 sm:p-8 rounded-[28px] shadow-paper-lg text-center relative overflow-hidden">
+        <div className="completion-card bg-card border border-ink/[0.07] p-5 rounded-[28px] shadow-paper-lg text-center relative overflow-hidden">
           <div className="relative">
             <div className="mx-auto mb-6 w-28 h-28 flex items-center justify-center animate-stamp"
               style={{ color: meta?.color ?? 'var(--teal)', transform: 'rotate(-8deg)' }}>

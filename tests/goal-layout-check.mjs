@@ -13,7 +13,7 @@ try {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('http://127.0.0.1:5194');
-    await page.getByRole('button', { name: '跳过引导' }).click();
+    await page.getByRole('button', { name: '稍后再看' }).click();
     await page.getByRole('button', { name: '我的手册', exact: true }).click();
     await page.getByRole('tab', { name: '心愿计划' }).click();
     await page.getByRole('button', { name: '＋ 种下一颗愿望' }).click();

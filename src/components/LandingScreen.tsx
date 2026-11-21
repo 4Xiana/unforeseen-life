@@ -3,6 +3,7 @@ import { XianMascot } from './XianMascot';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 import { useSpeechHold } from '../hooks/useSpeechHold';
 import { VoiceStatus } from './VoiceButton';
+import { DemoSampleButton } from '../demo/ui';
 
 interface Props {
   onStart: (freeTime?: string) => void;
@@ -19,11 +20,11 @@ const INTAKE_GROUPS: { label: string; options: string[] }[] = [
     options: ['15分钟', '半小时', '1小时'],
   },
   {
-    label: '位置',
+    label: '在哪',
     options: ['在家', '在街上', '在店里', '在公司/学校'],
   },
   {
-    label: '同行',
+    label: '和谁',
     options: ['一个人', '和朋友', '和对象', '和家里人'],
   },
 ];
@@ -63,6 +64,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`font-hand text-[12.5px] leading-none px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
         active
@@ -145,7 +147,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
   const handleGo = () => {
     if (busy) return;
     voice.reset();
-    onStart(text.trim() || '我有15分钟空闲，你看着安排吧');
+    onStart(text.trim() || '想探索点有趣的事，先推荐一条15分钟能做的支线吧');
   };
 
   const listening = voice.listening;
@@ -153,11 +155,6 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
   return (
     <div className={`landing-screen landing-${mode} flex-1 min-h-0 w-full flex flex-col relative overflow-hidden`}>
       <button className="absolute top-2 right-4 z-10 min-h-[44px] px-3 text-[12px] text-fog" onClick={() => { voice.cancel(); onOpenGuide(); }}>使用指南</button>
-      {/* 装饰圆点 */}
-      <div className="absolute top-10 right-8 w-24 h-24 rounded-full bg-moss/[0.05] pointer-events-none"/>
-      <div className="absolute bottom-40 left-6 w-16 h-16 rounded-full bg-orange/[0.07] pointer-events-none"/>
-      <div className="absolute top-1/3 left-2 w-10 h-10 rounded-full bg-teal/[0.06] pointer-events-none"/>
-
       {/* ── 顶部：吱呀 + 名字 + slogan ── */}
       <div className={`landing-hero shrink-0 flex flex-col items-center pt-12 px-6 bg-paper transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
         <XianMascot variant="face" size={152} className="landing-mascot" />
@@ -165,13 +162,11 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
         <h1 className="font-slogan text-ink text-[20px] leading-none mt-3">
           生活有主线，快乐在支线
         </h1>
-        <svg width="104" height="9" viewBox="0 0 120 10" fill="none" className="mt-1 text-moss">
-          <path d="M3 7 Q30 2 60 6 Q90 9 117 4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
-        </svg>
       </div>
 
       {/* ── 中部：语音 / 键盘 二态；矮屏时整区可滚动，绝不与底部按钮重叠 ── */}
-      <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 sm:px-6 overflow-y-auto scrollbar-hide">
+      <div ref={scrollRef} className="landing-content flex-1 min-h-0 w-full max-w-sm mx-auto px-4 overflow-y-auto scrollbar-hide">
+        <DemoSampleButton disabled={busy} onClick={() => onStart('我想在家试点有趣的事，帮我推荐几条支线吧')}>演示：帮我找一条支线</DemoSampleButton>
         {mode === 'voice' ? (
           <div key="voice" className="landing-voice-content min-h-full flex flex-col justify-start items-center pt-6 animate-fade-in">
             {/* 引导语 / 实时转写卡 */}
@@ -179,13 +174,13 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
               {voice.active || text.trim() ? (
                 <div className="index-card w-full px-4 py-3" style={{ transform: 'rotate(-0.6deg)' }}>
                   <p className="text-ink text-[14px] leading-[1.7]">
-                    {text.trim() || <span className="text-fog/70">{listening ? '正在聆听，说吧…' : '请等麦克风就绪…'}</span>}
+                    {text.trim() || <span className="text-fog/70">{listening ? '我在听，说吧…' : '麦克风准备中…'}</span>}
                   </p>
                 </div>
               ) : (
                 <p className="text-ink-2 text-[13.5px] leading-[1.9] text-center">
-                  和我讲讲你现在的位置，有多少空闲吧<br />
-                  让吱呀带你出发～
+                  今天，想试点什么？<br />
+                  说说你的想法，吱呀陪你一起找。
                 </p>
               )}
             </div>
@@ -211,17 +206,21 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
               <MicGlyph size={32} />
             </button>
             <span className="text-[14px] mt-2.5 text-fog">
-              {voice.phase === 'starting' ? '正在启动麦克风' : listening && hold.pressed ? '松开发送，上滑取消' : listening ? '正在聆听…' : voice.phase === 'stopping' ? '正在整理文字' : '按住说话'}
+              {voice.phase === 'starting' ? '麦克风准备中…' : listening && hold.pressed ? '松开发送，上滑取消' : listening ? '我在听…' : voice.phase === 'stopping' ? '正在整理你说的话…' : '按住，说说你的想法'}
             </span>
 
             <button type="button" onClick={hold.toggle} disabled={!voice.supported || busy || voice.phase === 'stopping'} className="text-[13px] text-moss-deep px-3 py-2 mt-1 rounded-full disabled:opacity-40">
-              {voice.active ? '结束并发送' : '也可以点击录音'}
+              {voice.active ? '说好了，发送' : '点一下，也能开始说'}
             </button>
-            <VoiceStatus phase={voice.phase} error={voice.error || (!voice.supported ? '当前浏览器不支持语音识别，可以使用键盘上的语音输入。' : null)} />
+            <VoiceStatus phase={voice.phase} error={voice.error || (!voice.supported ? '暂时用不了语音，打字告诉我也可以。' : null)} />
           </div>
         ) : (
           <div key="keyboard" className="animate-fade-in flex flex-col pt-1 pb-10">
-            <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 sm:p-4 shadow-paper">
+            <p className="text-ink-2 text-[13.5px] leading-[1.9] text-center mb-3">
+              今天，想试点什么？<br />
+              有想法就说，没有也没关系。
+            </p>
+            <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 shadow-paper">
               {INTAKE_GROUPS.map((g, gi) => (
                 <div
                   key={g.label}
@@ -229,7 +228,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
                     ? 'flex items-start gap-2.5'
                     : 'flex items-start gap-2.5 border-t border-dashed border-ink/10 mt-3.5 pt-3'}
                 >
-                  <span className="shrink-0 w-12 sm:w-14 pt-3 text-right font-hand text-fog text-[13px]">{g.label}</span>
+                  <span className="shrink-0 w-12 pt-3 text-right font-hand text-fog text-[13px]">{g.label}</span>
                   <div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
                     {g.options.map(phrase => (
                       <Chip
@@ -249,16 +248,16 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
               <input
                 id="landing-text-input"
                 type="text"
-                aria-label="位置、空闲时间和同行的人"
+                aria-label="告诉吱呀，你想试点什么"
                 value={text}
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleGo()}
-                placeholder="点上面的词填进来，也可以直接打字跟我说"
+                placeholder="比如：想在家试点有创意的事"
                 className="w-full bg-card border-2 border-paper-edge/80 rounded-full pl-4 pr-12 py-3 text-[13.5px] text-ink focus:border-moss focus:outline-none placeholder:text-fog/50"
               />
               <button
                 type="button"
-                aria-label="发送，让吱呀带你出发"
+                aria-label="发送想法，和吱呀一起找"
                 disabled={busy}
                 onClick={handleGo}
                 className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-moss hover:bg-moss-deep text-card flex items-center justify-center active:scale-95 transition-all"
@@ -287,7 +286,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
 
           <button
             type="button"
-            aria-label={mode === 'keyboard' ? '切回语音' : '改用键盘输入'}
+            aria-label={mode === 'keyboard' ? '用语音聊聊' : '打字告诉吱呀'}
             onClick={toggleMode}
             className="w-12 h-12 rounded-full flex items-center justify-center bg-moss/[14%] text-moss-deep hover:bg-moss/[22%] active:scale-95 transition-all"
           >
@@ -296,11 +295,11 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
 
           <button
             type="button"
-            aria-label={onResume ? '继续当前支线' : '先出发再说'}
+            aria-label={onResume ? '继续这条支线' : '给我点灵感'}
             onClick={onResume ? () => { voice.cancel(); onResume(); } : handleGo}
             className="rounded-full px-6 py-3 text-[15px] text-card bg-moss hover:bg-moss-deep shadow-btn active:scale-95 transition-all"
           >
-            {onResume ? '继续当前支线' : '先出发再说'}
+            {onResume ? '继续这条支线' : '给我点灵感'}
           </button>
         </div>
       </div>

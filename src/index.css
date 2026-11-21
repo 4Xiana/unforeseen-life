@@ -602,7 +602,7 @@ textarea:focus-visible {
   .pair-tab { min-width: 44px; flex-shrink: 0; }
 }
 
-@media (max-width: 639px) {
+@container app (max-width: 639px) {
   .chat-header-inner { padding-inline: 12px; padding-bottom: 8px; }
   .chat-header-layout { gap: 8px; }
   .chat-brand { gap: 8px; }

@@ -1,3 +1,4 @@
+import { appLocalStorage } from '../app-storage';
 import { useEffect, useState } from 'react';
 import { getClientId } from '../handbook';
 import { listGoals } from '../goals-api';
@@ -6,12 +7,12 @@ const key = () => `xian-app-guide-v1:${getClientId()}`;
 type GuideState = number | 'pending' | 'off';
 function read(): GuideState {
   try {
-    const saved = localStorage.getItem(key());
+    const saved = appLocalStorage.getItem(key());
     if (saved === null) return 'pending';
     if (/^[0-7]$/.test(saved)) {
       const step = Number(saved);
-      // Former pages 1–4 duplicated the examples now embedded in the introduction.
-      return step >= 1 && step <= 4 ? 0 : step;
+      // Resume older introductions at the start; the former ending is now the wish page.
+      return step >= 1 && step <= 3 ? 0 : step === 7 ? 6 : step;
     }
     return 'off';
   } catch { return 'pending'; }
@@ -20,7 +21,7 @@ function read(): GuideState {
 export function useAppOnboarding() {
   const [step, setStep] = useState<GuideState>(read);
   function remember(value: string) {
-    try { localStorage.setItem(key(), value); } catch { /* usable without storage */ }
+    try { appLocalStorage.setItem(key(), value); } catch { /* usable without storage */ }
   }
   const go = (next: number) => { remember(String(next)); setStep(next); };
   const close = (reason: 'done' | 'skipped' = 'skipped') => { remember(reason); setStep('off'); };

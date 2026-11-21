@@ -33,8 +33,8 @@ try {
     else await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from([1, 2, 3, 4]) });
   });
   await page.goto('http://127.0.0.1:5194');
-  await page.getByRole('button', { name: '跳过引导' }).click();
-  await page.getByRole('button', { name: '先出发再说' }).click();
+  await page.getByRole('button', { name: '稍后再看' }).click();
+  await page.getByRole('button', { name: '给我点灵感' }).click();
   await page.getByRole('button', { name: '沉浸', exact: true }).waitFor();
   await page.locator('.ticket-card').first().waitFor();
   await page.getByRole('button', { name: '沉浸', exact: true }).click();

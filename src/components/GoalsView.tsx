@@ -1,17 +1,28 @@
+import { appLocalStorage, appSessionStorage } from '../app-storage';
 import { useEffect, useRef, useState } from 'react';
 import type { Goal, GoalInput, GoalScene } from '../../server/goals-types';
 import { exampleInput } from '../../server/goals-types';
 import { changeGoalStatus, createGoalDraft, listGoals } from '../goals-api';
 import { appUrl } from '../paths';
+import { getClientId } from '../handbook';
 import './goals.css';
+import { DemoSampleButton, useDemoAction } from '../demo/ui';
 
 const scenes: Record<GoalScene, string> = { any: '场景不限', home: '在家', outdoors: '在户外', work: '在公司/学校' };
 const statuses = { draft: '待你确认', active: '慢慢生长', paused: '暂时歇歇', completed: '已成册' };
 const emptyInput: GoalInput = { wish: '', motivation: '', preferences: '', avoid: '', minutes: 15, scene: 'any' };
 const formKey = 'xian-goal-draft-input';
+const wishKey = () => `xian-wish-draft:${getClientId()}`;
+const sessionKey = () => `${formKey}:${getClientId()}`;
+function readLocalWish(): GoalInput | null {
+  try {
+    const draft = JSON.parse(appLocalStorage.getItem(wishKey()) || 'null');
+    return draft && typeof draft.wish === 'string' && draft.wish.trim() ? { ...emptyInput, ...draft } : null;
+  } catch { return null; }
+}
 function readDraft(): GoalInput {
-  try { return { ...emptyInput, ...JSON.parse(sessionStorage.getItem(formKey) || '{}') }; }
-  catch { return emptyInput; }
+  try { return { ...emptyInput, ...(readLocalWish() || {}), ...JSON.parse(appSessionStorage.getItem(sessionKey()) || '{}') }; }
+  catch { return readLocalWish() || emptyInput; }
 }
 
 function exportGoal(goal: Goal) {
@@ -32,7 +43,7 @@ function exportGoal(goal: Goal) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function GoalsView({ onClose, onStart, busy, executing, currentSessionId, revision, embedded = false, guided = false, recordOnly = false, onGoalsLoaded, onConfirmed }: {
+export function GoalsView({ onClose, onStart, busy, executing, currentSessionId, revision, embedded = false, guided = false, recordOnly = false, quickSetup = false, onGoalsLoaded, onConfirmed }: {
   onClose: () => void;
   onStart: (goal: Goal, minutes: number, scene: string) => void;
   busy: boolean;
@@ -42,6 +53,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
   embedded?: boolean;
   guided?: boolean;
   recordOnly?: boolean;
+  quickSetup?: boolean;
   onGoalsLoaded?: (hasGoals: boolean, hasConfirmed: boolean) => void;
   onConfirmed?: () => void;
 }) {
@@ -50,6 +62,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string>();
   const [input, setInput] = useState<GoalInput>(readDraft);
+  const [localWish, setLocalWish] = useState<GoalInput | null>(readLocalWish);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState('');
   const [error, setError] = useState('');
@@ -72,7 +85,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
     finally { if (alive.current) setLoading(false); }
   }
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  useEffect(() => { void load(); }, [revision]);
+  useEffect(() => { if (!quickSetup) void load(); }, [revision, quickSetup]);
   useEffect(() => {
     if (!loading && !error) loadedCallback.current?.(goals.length > 0, goals.some(g => g.status !== 'draft'));
   }, [loading, error, goals]);
@@ -92,7 +105,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
     window.addEventListener('focus', refresh);
     return () => { window.removeEventListener('xian-goals-changed', refresh); window.removeEventListener('focus', refresh); };
   }, []);
-  useEffect(() => { try { sessionStorage.setItem(formKey, JSON.stringify(input)); } catch { /* private mode */ } }, [input]);
+  useEffect(() => { try { appSessionStorage.setItem(sessionKey(), JSON.stringify(input)); } catch { /* private mode */ } }, [input]);
   useEffect(() => {
     if (embedded) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -113,7 +126,9 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
     try {
       const isExample = Object.keys(exampleInput).every(key => input[key as keyof GoalInput] === exampleInput[key as keyof GoalInput]);
       const g = await createGoalDraft(isExample ? { example: true } : { ...emptyInput, wish: input.wish }, editingId);
-      if (alive.current) { patch(g); setSelectedId(g.id); setCreating(false); }
+      // Clear only the wish that was just turned into a server-side plan.
+      try { if (readLocalWish()?.wish === input.wish) appLocalStorage.removeItem(wishKey()); } catch { /* private mode */ }
+      if (alive.current) { patch(g); setSelectedId(g.id); setCreating(false); setLocalWish(readLocalWish()); }
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : String(e)); }
     finally { if (alive.current) setPending(''); }
   }
@@ -126,12 +141,30 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
   }
   const conflictingTask = executing && goal?.inProgress?.sessionId !== currentSessionId;
   const unsuitable = !!next && (minutes < next.minutes || (next.scene !== 'any' && next.scene !== scene));
+  const fillSample = () => { setInput({ ...exampleInput }); setError(''); };
+  useDemoAction('fill-goal', fillSample);
+
+  if (quickSetup) return <form className="quick-wish" onSubmit={e => {
+    e.preventDefault();
+    if (input.wish.trim().length < 2) { setError('再多写一点吧，两个字就好，也可以先跳过。'); return; }
+    try {
+      appLocalStorage.setItem(wishKey(), JSON.stringify({ ...input, wish: input.wish.trim() }));
+      confirmedCallback.current?.();
+    } catch { setError('这次没能存好，可以先复制下来，稍后再试。'); }
+  }}>
+    <DemoSampleButton onClick={fillSample}>填入示例心愿</DemoSampleButton>
+    <label htmlFor="quick-wish-input"><span className="sr-only">想试试的事</span><textarea id="quick-wish-input" required minLength={2} maxLength={500} rows={2} value={input.wish} placeholder="比如：重新捡起画画" onChange={e => { setInput({ ...input, wish: e.target.value }); setError(''); }} /></label>
+    <div className="quick-wish-seeds" aria-label="心愿灵感">{['重新捡起画画', '找到自己的拿手菜', '做一本街区观察册'].map(wish => <button type="button" key={wish} aria-pressed={input.wish === wish} onClick={() => { setInput({ ...input, wish }); setError(''); }}>{wish}</button>)}</div>
+    <p className="quick-guide-footnote">会先记在这台设备上，之后去「心愿计划」慢慢安排。</p>
+    <button className="walk-primary quick-form-submit" type="submit">记下来，出发吧 →</button>
+    {error && <p className="quick-guide-error" role="alert">{error}</p>}
+  </form>;
 
   return <div className={`${embedded ? 'goals-overlay goals-embedded' : 'goals-overlay'}${guided ? ' goals-guided' : ''}`} ref={root} tabIndex={embedded ? undefined : -1} role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-labelledby="goals-heading" onKeyDown={embedded ? undefined : trapFocus}>
     <div className="goals-paper">
       <header className="goals-top">
         {(!embedded || goal || creating) && <button className="goals-back" onClick={() => { if (goal || creating) { setSelectedId(undefined); setCreating(false); setError(''); } else onClose(); }}>{goal || creating ? '← 心愿计划' : '← 回到此刻'}</button>}
-        <span className="font-hand">一点一点，也会很远</span>
+
         {!embedded && <button className="goals-close" onClick={onClose} aria-label="关闭心愿计划">×</button>}
       </header>
       <main className="goals-body">
@@ -139,6 +172,7 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
         {pending && <p className="goals-pending" role="status">{pending}<small>{recordOnly ? '可以稍后再填；保存成功后，心愿会留在我的手册里。' : '可以先回到此刻；生成成功的草稿会保存在心愿计划里。'}</small></p>}
         {loading && <p role="status">正在打开你的心愿计划…</p>}
         {creating ? <>
+          <DemoSampleButton disabled={!!pending} onClick={fillSample}>填入示例心愿</DemoSampleButton>
           {!guided && <p className="goals-eyebrow">一颗愿望，几片日常</p>}
           <h1 id="goals-heading">你想慢慢靠近什么？</h1>
           <p className="goals-intro">{recordOnly ? '简单写下你想做的事，先为这个念头留个位置。' : '简单写下你想做的事就好。吱呀会结合你的喜好，把它安排成具体的小任务。'}</p>
@@ -213,9 +247,10 @@ export function GoalsView({ onClose, onStart, busy, executing, currentSessionId,
             {goal.status === 'completed' && <p className="goals-finale">从一个念头，到这一册真实发生过的日常。它已经属于你了。</p>}
           </section>
         </> : <>
-          <p className="goals-eyebrow">LONG LITTLE JOURNEYS</p>
+
           <h1 id="goals-heading">把喜欢，慢慢过成生活。</h1>
           <p className="goals-intro">不必一下走很远。把一个愿望放在这里，每次留一点时间，让零碎的小事有自己的来处和去向。</p>
+          {localWish && <section className="goals-reason" aria-label="本机心愿草稿"><span>上次留下的心愿 · 本机草稿</span><p>{localWish.wish}</p><button className="goals-primary" onClick={() => { setEditingId(undefined); setInput(localWish); setCreating(true); }}>继续安排这个心愿 →</button></section>}
           <div className="goals-toolbar"><button className="goals-primary" disabled={!!pending} onClick={() => { setEditingId(undefined); setCreating(true); }}>＋ 种下一颗愿望</button><button disabled={!!pending} onClick={() => { setEditingId(undefined); setInput({ ...exampleInput }); setCreating(true); }}>体验示例 · 声音小册</button></div>
           {!loading && goals.length === 0 && <div className="goals-empty"><span aria-hidden>✳</span><h2>还没有心愿计划</h2><p>想做一本观察册，想更了解自己的口味，或想重新捡起画画。<br />从一个你愿意靠近的念头开始就好。</p><small>每章都有真实成果，彼此相连，也允许随时歇歇。</small></div>}
           <div className="goals-list">{goals.map((g, i) => <button className="goals-cover" key={g.id} onClick={() => { setSelectedId(g.id); setMinutes(Math.max(15, g.plan.chapters[g.records.length]?.minutes || 15)); setScene(g.plan.chapters[g.records.length]?.scene === 'any' ? 'home' : g.plan.chapters[g.records.length]?.scene || 'home'); }}>

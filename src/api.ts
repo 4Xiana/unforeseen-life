@@ -1,4 +1,4 @@
-import type { SSEEvent, UserProfile, SaveProfileInput, QuestPair } from './types';
+import type { SSEEvent, UserProfile, SaveProfileInput, QuestPair, PairAnswer } from './types';
 import { API_BASE } from './paths';
 import { getClientId } from './handbook';
 import type { RestoredSession } from './session-restore';
@@ -151,6 +151,16 @@ export async function updateProfile(
   } catch {
     return null;
   }
+}
+
+export async function updateProfileFitting(clientId: string, pairVotes: Record<string, PairAnswer>): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/profile/fitting`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId },
+    body: JSON.stringify({ pairVotes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '暂时没能保存问卷，请重试。');
+  return data as UserProfile;
 }
 
 export async function fetchQuestPairs(): Promise<QuestPair[] | null> {

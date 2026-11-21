@@ -1,9 +1,11 @@
+import { appLocalStorage } from '../app-storage';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getClientId } from '../handbook';
 import './personal-library.css';
 
-export type LibraryTab = 'preferences' | 'goals' | 'handbook' | 'inspiration';
+export type LibraryTab = 'threads' | 'preferences' | 'goals' | 'handbook' | 'inspiration';
 const tabs: { id: LibraryTab; label: string; mark: string }[] = [
+  { id: 'threads', label: '支线脉络', mark: '⌁' },
   { id: 'preferences', label: '喜好', mark: '♡' },
   { id: 'goals', label: '心愿计划', mark: '✳' },
   { id: 'handbook', label: '日常记录', mark: '✧' },
@@ -33,7 +35,7 @@ export function PersonalLibrary({ tab, onTabChange, onClose, onOpenGuide, needsP
   const key = `xian-library-guide-v1:${getClientId()}`;
   const guided = guide === 'preferences' || guide === 'goals';
   function remember(value: string) {
-    try { localStorage.setItem(key, value); } catch { /* continue in memory */ }
+    try { appLocalStorage.setItem(key, value); } catch { /* continue in memory */ }
   }
   function startGuide() {
     const next = needsPreferences ? 'preferences' : 'goals';
@@ -109,7 +111,7 @@ export function PersonalLibrary({ tab, onTabChange, onClose, onOpenGuide, needsP
         <p className="library-guide-title" tabIndex={-1}><span aria-hidden>✳</span> 喜好与心愿，都收好了。</p>
         <button onClick={() => setGuide('off')}>翻开我的手册 →</button>
       </div>}
-      {guide === 'off' && (needsPreferences || !goalState?.hasConfirmed) && <div className="library-guide-resume"><button onClick={startGuide}>继续填写引导 →</button></div>}
+      {guide === 'off' && (tab === 'preferences' || tab === 'goals') && (needsPreferences || !goalState?.hasConfirmed) && <div className="library-guide-resume"><button onClick={startGuide}>让吱呀陪我填 →</button></div>}
       {tabs.map(item => <section key={item.id} className="library-panel" id={`library-panel-${item.id}`} role="tabpanel" aria-labelledby={`library-tab-${item.id}`} tabIndex={0} hidden={tab !== item.id}>
         {content[item.id]}
       </section>)}

@@ -46,17 +46,24 @@ export interface ChatMessage {
   imageUrl?: string;
 }
 
-// 当前支线的任务进度（由 step_published 事件聚合，供任务进度抽屉使用）：
+// 当前支线的任务进度（由 step_published 事件聚合，供任务页使用）：
 // steps 按发布顺序累积，total 是设计的总步数；新支线从 step.index=0 重新开始
 export interface QuestProgress {
-  // 支线实例 id（新支线 step0 时生成）：抽屉据此把"当前支线"与历史归档去重
+  // 支线实例 id（新支线发布步骤时生成）：用于当前支线与历史归档去重
   id?: string;
   title: string;
   total: number;
   steps: PublishedStep[];
 }
 
-// 已结束的支线（走完归档 / 中途放弃）：抽屉时间轴里作为历史节点累积保留
+export interface StepReview {
+  stepIndex: number;
+  verdict: 'pass' | 'reject';
+  reason: string;
+  whatNeeded: string;
+}
+
+// 已结束的支线（走完归档 / 中途放弃）：作为会话历史节点累积保留
 export interface ArchivedQuest {
   id: string;
   title: string;
@@ -102,6 +109,7 @@ export interface StepDetail {
 }
 
 export interface QuestRecord {
+  desiredOutcomes?: DesiredOutcome[];
   id: string;
   title: string;
   category: QuestCategory;
@@ -139,6 +147,10 @@ export interface HandbookView {
 // ── 玩家喜好档案（长期记忆），与服务端 UserProfile 对应 ─────────────────────
 // 问题轴与种子库标签对齐：体力 / 新奇度 / 人群 / 预算 / 玩法机制
 
+export type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
+import type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
+export type { MbtiType, ActivityPreference, DesiredOutcome } from '../server/agent/profile/identity-preferences';
+import type { MbtiType, ActivityPreference, DesiredOutcome } from '../server/agent/profile/identity-preferences';
 export type EnergyPref = '坐' | '慢' | '动' | 'any';
 export type SocialPref = 'solo' | 'pair' | 'group' | 'any';
 export type BudgetPref = 'free' | 'low' | 'any';
@@ -153,6 +165,9 @@ export interface UserProfile {
   createdAt?: string;
   updatedAt?: string;
   onboarded: boolean;
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;
@@ -161,10 +176,15 @@ export interface UserProfile {
   interests: string;
   avoids: string;
   /** Pair-wise 快速对比选择：pairId -> 选中 A/B */
-  pairVotes: Record<string, 'A' | 'B'>;
+  pairVotes: Record<string, PairAnswer>;
+  fitting?: PreferenceFitting;
+  fittingUpdatedAt?: string;
 }
 
 export interface SaveProfileInput {
+  mbti?: MbtiType | null;
+  activityPreference?: ActivityPreference;
+  desiredOutcomes?: DesiredOutcome[];
   energy: EnergyPref;
   novelty: NoveltyPref;
   social: SocialPref;
@@ -172,7 +192,7 @@ export interface SaveProfileInput {
   mechs: MechanismPref[];
   interests: string;
   avoids: string;
-  pairVotes: Record<string, 'A' | 'B'>;
+  pairVotes?: Record<string, PairAnswer>;
 }
 
 // ── Pair-wise 真实任务对比（GET /api/quest-pairs）──────────────────────────
@@ -185,9 +205,11 @@ export interface PairSeed {
   scenes: string[];
   energy: string;
   budget: '0' | '低';
+  people?: string[];
 }
 
 export interface QuestPair {
+  section?: string;
   id: string;
   /** 问题用时长从句：如 "只有 10 分钟" */
   when: string;

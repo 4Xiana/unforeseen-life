@@ -8,11 +8,12 @@ interface Props {
   embedded?: boolean;
   onStartQuest: () => void;
   busy?: boolean;
+  onOpenThreads?: () => void;
 }
 
 function CategoryStamps({ view }: { view: HandbookView }) {
   return (
-    <div className="category-stamps grid grid-cols-5 gap-1 sm:gap-2 mb-5">
+    <div className="category-stamps grid grid-cols-5 gap-1 mb-5">
       {CATEGORY_ORDER.map((cat) => {
         const meta = CATEGORY_META[cat];
         const count = view.stats.byCategory[cat] || 0;
@@ -87,7 +88,7 @@ function BadgeWall({ badges, showConditions = false }: { badges: BadgeState[]; s
   );
 }
 
-export function HandbookView({ view, onClose, embedded = false, onStartQuest, busy = false }: Props) {
+export function HandbookView({ view, onClose, embedded = false, onStartQuest, busy = false, onOpenThreads }: Props) {
   const empty = view.stats.total === 0;
   return (
     <div className={embedded ? 'handbook-embedded' : 'viewport-overlay journal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in'}
@@ -118,6 +119,7 @@ export function HandbookView({ view, onClose, embedded = false, onStartQuest, bu
           </div>
 
           <div className="panel-content px-6 pb-6 overflow-y-auto min-h-0">
+            {onOpenThreads && <button type="button" className="handbook-thread-link" onClick={onOpenThreads}>把经历连起来，看看我的支线脉络 →</button>}
             {empty ? (
               <div className="handbook-empty">
                 <BadgeWall badges={view.badges.filter(b => !b.earned).slice(0, 6)} showConditions />
@@ -127,8 +129,8 @@ export function HandbookView({ view, onClose, embedded = false, onStartQuest, bu
             ) : (
               <>
                 <CategoryStamps view={view} />
-                <BadgeWall badges={view.badges} />
-                <h3 className="font-hand text-fog text-[14px] mb-3">支线记录 · 点击展开看证物</h3>
+                <details className="handbook-achievements"><summary>我的成就 · 已点亮 {view.badges.filter(b => b.earned).length} 枚</summary><BadgeWall badges={view.badges} /></details>
+                <h3 className="font-hand text-fog text-[14px] mb-3">走过的小支线</h3>
                 <div className="space-y-2.5">
                   {view.quests.map((q) => (
                     <QuestRecordCard key={q.id} record={q} />

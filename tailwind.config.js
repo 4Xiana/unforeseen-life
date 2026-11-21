@@ -36,8 +36,8 @@ export default {
       },
       fontFamily: {
         sans: ['"Noto Sans SC"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"ZCOOL KuaiLe"', '"Baloo 2"', '"Noto Sans SC"', 'sans-serif'],
-        hand: ['"Ma Shan Zheng"', '"Caveat"', 'cursive'],
+        display: ['"LXGW WenKai"', '"Noto Sans SC"', 'sans-serif'],
+        hand: ['"LXGW WenKai"', '"Noto Sans SC"', 'sans-serif'],
         mono: ['"JetBrains Mono"', '"SF Mono"', 'Menlo', 'mono'],
       },
       boxShadow: {

@@ -7,6 +7,7 @@ import type { AtomTool } from '../tools/atom-tools.js';
 import type { LLMInvokeParams, LLMInvokeResult, ChatContentPart } from '../flows/types.js';
 import type { SessionTracer } from '../tracer/tracer.js';
 import { TOOL_STEPPING_TEXT } from '../prompts/index.js';
+import { chatRequestOptions } from '../../model-config.js';
 
 export type EmitEvent = (event: Record<string, unknown>) => void;
 
@@ -72,6 +73,7 @@ export class LLMRunnerProvider {
       name: '吱呀',
       instructions,
       tools,
+      modelSettings: { providerData: chatRequestOptions(this.baseURL) },
       toolUseBehavior: { stopAtToolNames: STOP_AFTER_TOOLS },
     });
 

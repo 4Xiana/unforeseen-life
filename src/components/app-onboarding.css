@@ -176,7 +176,7 @@
 @keyframes walk-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes walk-focus-ring { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.025); } }
 @keyframes guide-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (max-width: 600px) {
+@container app (max-width: 600px) {
   .app-guide { padding: 0; }
   .app-guide-book { height: 100%; border: 0; border-radius: 0; }
   .app-guide-top { padding: max(4px, env(safe-area-inset-top)) 16px 0; gap: 8px; }
@@ -228,11 +228,11 @@
   .guide-floating.has-scene .guide-caption-text { min-height: 0; font-size: 16px; }
   .app-guide-controls { margin-top: 16px; }
 }
-@media (max-width: 600px) {
+@container app (max-width: 600px) {
   .app-guide:has(.scene-try-form) .app-guide-welcome > img { width: 64px; height: 64px; }
   .app-guide:has(.scene-try-form) .app-guide-welcome { gap: 8px; margin-top: 0; }
 }
-@media (max-width: 360px) {
+@container app (max-width: 360px) {
   .app-guide .goals-field-pair { grid-template-columns: 1fr; }
   .app-guide .preference-question button.flex-1 { min-height: 104px; gap: 6px; padding-inline: 6px; }
   .app-guide .preference-question button.flex-1 > span:nth-child(2) { font-size: 14px; }
@@ -245,4 +245,57 @@
 .app-guide-controls .app-guide-scene-skip { flex: 0 0 auto; margin: 0; padding-inline: 24px; background: var(--guide-selected); color: var(--moss-deep); }
 @media (prefers-reduced-motion: reduce) {
   .app-guide *, .app-guide *::before, .app-guide *::after { animation: none !important; transition: none !important; }
+}
+
+/* Four short pages, with only body copy and small supporting copy. */
+.app-guide.app-guide-compact {
+  --guide-font: var(--font-ui, "Noto Sans SC", sans-serif);
+  --guide-surface: var(--card);
+  --guide-selected: var(--surface-selected);
+}
+.app-guide.app-guide-compact :is(h1,h2,h3,p,span,strong,small,label,legend,input,textarea,select,button,summary,blockquote) {
+  font-family: var(--guide-font); font-size: 16px; font-weight: 400; line-height: 1.8;
+}
+.app-guide.app-guide-compact :is(.app-guide-top span,.app-guide-top button,.quick-guide-description,.quick-guide-footnote,.quick-demo-selected,.quick-demo-saved p,.preference-note,.preference-error,.quick-guide-error) {
+  font-size: 13px; color: var(--ink-2);
+}
+.app-guide.app-guide-compact :is(.preference-error,.quick-guide-error) { color: #a44132; }
+.app-guide.app-guide-compact :is(.mbti-code,.mbti-group-note,.mbti-role-name,.identity-note,.mbti-controls button) { font-size: 13px; }
+.app-guide-compact .app-guide-book { height: min(780px, 100%); border-color: var(--surface-line); }
+.app-guide-compact .app-guide-top nav { display: flex; gap: 8px; }
+.app-guide-compact .app-guide-progress { gap: 6px; padding-bottom: 16px; }
+.app-guide-compact .app-guide-progress i { height: 2px; background: var(--surface-line); }
+.app-guide-compact .app-guide-progress .filled { background: var(--moss); }
+.app-guide-compact .app-guide-page { padding-top: 8px; }
+.app-guide-compact h1 { margin: 0 0 20px; outline: none; }
+.app-guide-compact .quick-guide-description { margin: -8px 0 24px; }
+.app-guide-page:has(.quick-guide-intro) { min-height: 100%; display: flex; align-items: center; }
+.quick-guide-intro { width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.quick-guide-intro h1, .app-guide-compact .quick-guide-intro .quick-guide-description { margin: 0; }
+.app-guide-compact .quick-guide-footer { margin: 0; padding: 16px 24px max(16px, env(safe-area-inset-bottom)); border-top: 0; flex-shrink: 0; }
+.quick-guide-footer > button { width: 100%; margin-left: 0; }
+.quick-demo-message { margin: 16px 0 0 24px; background: var(--guide-selected); padding: 12px 16px; border-radius: 16px 16px 0 16px; }
+.quick-demo-task { padding: 16px; margin: 16px 0; border: 1px solid var(--surface-line); border-radius: var(--radius-surface); background: var(--guide-surface); }
+.quick-demo h2 { margin: 4px 0 0; }
+.quick-demo button { width: 100%; margin-top: 16px; }
+.quick-demo-selected { display: inline-block; margin-top: 8px; }
+.quick-demo-tutorial { margin: 0 0 16px; scroll-margin-block: 12px; border-radius: var(--radius-control); }
+.quick-demo-tutorial:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+.quick-demo-tutorial img { display: block; width: 100%; height: auto; border-radius: var(--radius-control); }
+.quick-demo-tutorial figcaption { margin-top: 8px; }
+.quick-demo-saved { padding: 14px; background: var(--guide-selected); border-radius: var(--radius-control); margin-top: 16px; }
+.quick-demo-saved p { margin-top: 4px; }
+.app-guide-compact .app-guide-real-form { margin-top: 0; }
+.app-guide-compact .basic-choice-group { margin-bottom: 24px; }
+.app-guide-compact .basic-choice-group button { border-radius: var(--radius-control); }
+.quick-wish > label { display: grid; margin-bottom: 12px; }
+.quick-wish textarea { border: 1px solid var(--surface-line); background: var(--guide-surface); border-radius: var(--radius-control); padding: 12px; width: 100%; color: var(--ink); resize: vertical; min-height: 92px; }
+.quick-wish-seeds { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.quick-wish-seeds button { border: 1px solid var(--surface-line); background: var(--guide-surface); border-radius: var(--radius-control); padding: 8px 12px; text-align: center; }
+.quick-wish-seeds button[aria-pressed=true] { background: var(--guide-selected); border-color: var(--moss-deep); color: var(--moss-deep); }
+.quick-form-submit { width: 100%; margin-top: 24px; }
+.quick-guide-error { margin-top: 12px; }
+@container app (max-width: 600px) or (max-height: 600px) {
+  .app-guide-compact .app-guide-book { height: 100%; }
+  .app-guide-compact .quick-guide-footer { padding-inline: 16px; }
 }

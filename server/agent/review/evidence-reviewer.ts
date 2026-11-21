@@ -10,10 +10,11 @@
  * coordinator 拿到 verdict 后：把结论注入吱呀的本轮上下文，并作为 publish_step /
  * S3 毕业的硬门控——reject 时无论吱呀嘴上说什么都发不出下一步。
  *
- * 复用同一 OpenAI 兼容配置（默认 deepseek-chat，已实测支持图片输入），
+ * 复用同一 OpenAI 兼容配置；照片验收要求配置的模型支持图片输入。
  * 不引入新依赖/新密钥。任何失败都由调用方降级（绝不默认放行）。
  */
 import { OpenAI } from 'openai';
+import { chatRequestOptions } from '../../model-config.js';
 import type { ActivityStep } from '../memory/types.js';
 import type { GeoPoint } from '../env/env-service.js';
 
@@ -169,7 +170,7 @@ function parseReview(args: unknown): EvidenceReview | null {
 export async function reviewEvidence(params: ReviewEvidenceParams): Promise<EvidenceReview> {
   const apiKey = process.env.OPENAI_API_KEY || '';
   const baseURL = process.env.OPENAI_BASE_URL || undefined;
-  const model = process.env.OPENAI_MODEL || 'deepseek-chat';
+  const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
   const client = new OpenAI({ apiKey, baseURL, timeout: 60000 });
 
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
@@ -181,6 +182,7 @@ export async function reviewEvidence(params: ReviewEvidenceParams): Promise<Evid
 
   const runCall = async () =>
     client.chat.completions.create({
+      ...chatRequestOptions(),
       model,
       tools: [REVIEW_TOOL],
       tool_choice: 'required',

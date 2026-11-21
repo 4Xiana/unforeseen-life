@@ -42,7 +42,7 @@ function Rail({ dot, isLast, lineTone, children }: {
     : lineTone === 'active' ? 'bg-moss/40'
     : 'bg-fog-light/60';
   return (
-    <div className="quest-rail flex gap-2 sm:gap-3">
+    <div className="quest-rail flex gap-2">
       <div className="flex flex-col items-center">
         {dot}
         {!isLast && (
