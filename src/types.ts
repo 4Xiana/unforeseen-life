@@ -139,6 +139,8 @@ export interface HandbookView {
 // ── 玩家喜好档案（长期记忆），与服务端 UserProfile 对应 ─────────────────────
 // 问题轴与种子库标签对齐：体力 / 新奇度 / 人群 / 预算 / 玩法机制
 
+export type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
+import type { PairAnswer, PreferenceFitting } from '../server/agent/profile/fitting-pairs';
 export type EnergyPref = '坐' | '慢' | '动' | 'any';
 export type SocialPref = 'solo' | 'pair' | 'group' | 'any';
 export type BudgetPref = 'free' | 'low' | 'any';
@@ -161,7 +163,9 @@ export interface UserProfile {
   interests: string;
   avoids: string;
   /** Pair-wise 快速对比选择：pairId -> 选中 A/B */
-  pairVotes: Record<string, 'A' | 'B'>;
+  pairVotes: Record<string, PairAnswer>;
+  fitting?: PreferenceFitting;
+  fittingUpdatedAt?: string;
 }
 
 export interface SaveProfileInput {
@@ -172,7 +176,7 @@ export interface SaveProfileInput {
   mechs: MechanismPref[];
   interests: string;
   avoids: string;
-  pairVotes: Record<string, 'A' | 'B'>;
+  pairVotes?: Record<string, PairAnswer>;
 }
 
 // ── Pair-wise 真实任务对比（GET /api/quest-pairs）──────────────────────────
@@ -185,9 +189,11 @@ export interface PairSeed {
   scenes: string[];
   energy: string;
   budget: '0' | '低';
+  people?: string[];
 }
 
 export interface QuestPair {
+  section?: string;
   id: string;
   /** 问题用时长从句：如 "只有 10 分钟" */
   when: string;

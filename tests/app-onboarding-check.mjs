@@ -78,7 +78,7 @@ try {
   await step(1);
   const results = [];
   for (const [width, height] of [[320, 568], [390, 844], [844, 390], [1280, 900]]) {
-    profile = { ...profile, interests: '', onboarded: false };
+    profile = { ...profile, energy: '慢', budget: 'free', interests: '', onboarded: false };
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ reducedMotion: width === 320 ? 'reduce' : 'no-preference' });
     await loadGuide(); await step(1); await layout();
@@ -89,21 +89,23 @@ try {
     await page.getByRole('status').filter({ hasText: '一条支线完成了' }).waitFor();
     await layout();
     await button('下一步：选点喜好 →').click(); await step(3); await layout();
-    assert.equal(await page.locator('.quick-preference-chips button').count(), 6);
-    await button('观察记录').click();
-    await button('观察记录').click(); // Toggle back without silently keeping the choice.
-    assert.equal(await button('观察记录').getAttribute('aria-pressed'), 'false');
-    await button('手工创作').click();
+    assert.equal(await page.locator('.basic-choice-group').count(), 2);
+    assert.equal(await page.locator('.preference-fitting').count(), 0, 'No long questionnaire during onboarding');
+    await button('安静坐着').click();
+    await button('安静坐着').click();
+    assert.equal(await button('安静坐着').getAttribute('aria-pressed'), 'false');
+    await button('慢慢活动').click();
+    await button('小额花费可以').click();
     if (width === 390) {
       await page.screenshot({ path: `${output}/preferences.png` });
       failSave = true;
       await button('保存喜好，下一步 →').click();
       await page.getByRole('alert').waitFor(); await step(3);
-      assert.equal(await button('手工创作').getAttribute('aria-pressed'), 'true');
+      assert.equal(await button('慢慢活动').getAttribute('aria-pressed'), 'true');
       failSave = false;
     }
     await button('保存喜好，下一步 →').click(); await step(4); await layout();
-    assert.equal(profile.energy, '慢'); assert.equal(profile.avoids, '不拍照');
+    assert.equal(profile.energy, '慢'); assert.equal(profile.budget, 'low'); assert.equal(profile.avoids, '不拍照');
     assert.deepEqual(profile.mechs, ['定点观察']); assert.deepEqual(profile.pairVotes, { preserved: 'A' });
     await button('重新捡起画画').click();
     await page.setViewportSize({ width, height: Math.min(height, 400) });

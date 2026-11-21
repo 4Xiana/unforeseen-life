@@ -120,6 +120,7 @@ export default function App() {
     profile,
     questPairs,
     saveUserProfile,
+    fitUserProfile,
   } = useAgentSession({ requestLocation: !onboarding.active });
   useFirstVisitGuide(onboarding, !isRestoring && profile !== null && handbook !== null, started || !!profile?.onboarded || (handbook?.stats.total ?? 0) > 0);
   const guideStepRef = useRef(onboarding.step);
@@ -273,7 +274,7 @@ export default function App() {
       )}
       {libraryTab && <PersonalLibrary tab={libraryTab} onTabChange={setLibraryTab} onClose={() => setLibraryTab(null)} onOpenGuide={openGuide} needsPreferences={!profile?.onboarded} panels={guide => ({
         inspiration: <InspirationView />,
-        preferences: <PreferenceSheet embedded open guided={guide.guidedPreferences} onSaved={guide.onPreferencesSaved} onClose={() => setLibraryTab(null)} initial={profile} pairs={questPairs} onSave={saveUserProfile} />,
+        preferences: <PreferenceSheet embedded open guided={guide.guidedPreferences} onSaved={guide.onPreferencesSaved} onClose={() => setLibraryTab(null)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onFit={fitUserProfile} />,
         goals: <GoalsView embedded guided={guide.guidedGoals} onGoalsLoaded={guide.onGoalsLoaded} onConfirmed={guide.onGoalConfirmed} onClose={() => setLibraryTab(null)} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} />,
         handbook: handbook ? <HandbookView embedded view={handbook} onClose={() => setLibraryTab(null)} busy={isStreaming || isConnecting || isRestoring} onStartQuest={() => { setLibraryTab(null); setShowHome(false); if (!started) start('我有15分钟，想做一件轻松的小事'); }} /> : <div className="library-loading" role="status">还没能打开日常记录<button onClick={refreshHandbook}>重新加载</button></div>,
       })} />}

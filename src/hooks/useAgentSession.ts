@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, fetchQuestPairs, fetchSavedSession } from '../api';
+import { createSession, sendMessage, sendPhoto, fetchProfile, updateProfile, updateProfileFitting, fetchQuestPairs, fetchSavedSession } from '../api';
 import { restoreSessionView, type RestoredSession } from '../session-restore';
 import type { FSMState, ActivityPlan, PublishedStep, SSEEvent, TimelineItem, HandbookView, BadgeState, QuestCategory, QuestProgress, ArchivedQuest, EnvInfo, UserProfile, SaveProfileInput, QuestPair } from '../types';
 import { getClientId, saveClientId, fetchHandbook } from '../handbook';
@@ -662,6 +662,12 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     setProfile(saved);
   }, []);
 
+  const fitUserProfile = useCallback(async (votes: Parameters<typeof updateProfileFitting>[1]) => {
+    const saved = await updateProfileFitting(clientIdRef.current, votes);
+    setProfile(saved);
+    return saved;
+  }, []);
+
   // 骨架屏：玩家点选/换一批的乐观态立即显示；否则按"UI 已挂起 + Agent 已开口引导"放行
   const uiSkeleton = uiOptimistic ?? (uiPending && uiGuided ? uiPending : null);
 
@@ -703,5 +709,6 @@ export function useAgentSession({ requestLocation = true }: { requestLocation?: 
     dismissCompletion,
     refreshHandbook,
     saveUserProfile,
+    fitUserProfile,
   };
 }

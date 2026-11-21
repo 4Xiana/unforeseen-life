@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { AgentSession, type UserInput } from './agent/session.js';
 import { listSessionTraces, getSessionTrace, subscribeTraces } from './agent/tracer/tracer.js';
 import { getView } from './agent/handbook/handbook.js';
-import { getProfile, saveProfile, normalizeProfileInput } from './agent/profile/profile.js';
+import { getProfile, saveProfile, saveProfileFitting, normalizeProfileInput } from './agent/profile/profile.js';
 import { questPairsForClient } from './agent/profile/quest-pairs.js';
 import { parseGeo } from './agent/env/env-service.js';
 import { DATA_DIR } from './data-path.js';
@@ -276,6 +276,13 @@ app.put('/api/profile', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+app.put('/api/profile/fitting', async (req, res) => {
+  const clientId = req.get('X-Client-Id');
+  if (!clientId) { res.status(400).json({ error: 'clientId required' }); return; }
+  try { res.json(await saveProfileFitting(clientId, req.body?.pairVotes)); }
+  catch (err) { res.status(400).json({ error: err instanceof Error ? err.message : '暂时无法保存，请重试。' }); }
 });
 
 app.get('/api/quest-pairs', (_req, res) => {

@@ -54,8 +54,8 @@ export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goa
             <OnboardingSceneTry scene="home" onComplete={() => setSceneCompleted(true)} />
           </>}
           {step === 5 && <>
-            <h1 id="app-guide-title" tabIndex={-1}>什么让你觉得有意思？</h1>
-            <p className="quick-guide-description">点几个喜欢的方向，让推荐更合心意。可多选。</p>
+            <h1 id="app-guide-title" tabIndex={-1}>先记两点基本喜好</h1>
+            <p className="quick-guide-description">活动节奏和预算，点两下就好。不确定可以跳过。</p>
             <div className="app-guide-real-form">{preferences}</div>
           </>}
           {step === 6 && <>

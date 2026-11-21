@@ -1,4 +1,5 @@
 import { SEEDS, type Seed } from '../skills/quest-library/seeds.js';
+import { FITTING_PAIRS } from './fitting-pairs.js';
 
 // ── Pair-wise 真实任务对比·时间爬坡 ────────────────────────────────────────
 // 不用抽象维度提问（那与结构化页重复）：按时间从短到长设 6 个档位，
@@ -39,6 +40,7 @@ export interface QuestPair {
   when: string;
   timeShort: string;
   axis: string;
+  section?: string;
   a: Seed;
   b: Seed;
 }
@@ -75,7 +77,8 @@ function hydrate(raw: RawPair): QuestPair {
   return { id: raw.id, when: raw.when, timeShort: raw.timeShort, axis: raw.axis, a, b };
 }
 
-export const QUEST_PAIRS: QuestPair[] = RAW_PAIRS.map(hydrate);
+export const LEGACY_PAIRS: QuestPair[] = RAW_PAIRS.map(hydrate);
+export const QUEST_PAIRS: QuestPair[] = [...LEGACY_PAIRS, ...FITTING_PAIRS];
 
 /** 只取前端渲染需要的种子字段（避免把整个种子结构下发） */
 export function pairSeedForClient(s: Seed) {
@@ -87,14 +90,16 @@ export function pairSeedForClient(s: Seed) {
     scenes: s.scenes,
     energy: s.energy,
     budget: s.budget,
+    people: s.people,
   };
 }
 
 export function questPairsForClient() {
-  return QUEST_PAIRS.map((p) => ({
+  return FITTING_PAIRS.map((p) => ({
     id: p.id,
     when: p.when,
     timeShort: p.timeShort,
+    section: p.section,
     a: pairSeedForClient(p.a),
     b: pairSeedForClient(p.b),
   }));
