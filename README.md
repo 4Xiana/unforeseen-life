@@ -159,6 +159,8 @@ cp server/.env.example server/.env
 
 MiniMax 语音使用 `speech-2.8-turbo` 与 `qiaopi_mengmei`（俏皮萌妹），供沉浸对话中的朗读及「听听吱呀的新声音」使用。后端仅在官方返回成功状态及有效音频时响应 MP3；配置密钥本身不代表服务已验证通过。若官方返回 `2049: invalid api key`，需要在开放平台更新有效接口密钥后重载产品。
 
+`MINIMAX_API_BASE` 必须与密钥所属站点一致：国内站使用 `https://api.minimaxi.com/v1`，国际站使用 `https://api.minimax.io/v1`。国际站密钥请求国内接口可能显示密钥无效；正确站点返回 `1008: insufficient balance` 时，需要先补充该站点的 API 可用余额，再验证语音生成。
+
 ### 本地开发
 
 ```bash
