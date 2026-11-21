@@ -250,11 +250,8 @@ export default function App() {
         onStep={onboarding.go}
         onSkip={() => onboarding.close()}
         onFinish={() => onboarding.close('done')}
-        returning={started}
-        startPending={isRestoring || isConnecting}
-        onStart={text => { onboarding.close('done'); start(text); }}
-        preferences={<PreferenceSheet embedded open guided onClose={() => onboarding.go(6)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onSaved={() => { if (guideStepRef.current === 5) onboarding.go(6); }} />}
-        goals={<GoalsView embedded guided recordOnly onClose={() => onboarding.go(7)} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} onConfirmed={() => { if (guideStepRef.current === 6) onboarding.go(7); }} />}
+        preferences={<PreferenceSheet embedded open compact onClose={() => onboarding.go(6)} initial={profile} pairs={questPairs} onSave={saveUserProfile} onSaved={() => { if (guideStepRef.current === 5) onboarding.go(6); }} />}
+        goals={<GoalsView embedded quickSetup onClose={() => onboarding.close('done')} onStart={startGoalFromLibrary} busy={isStreaming || isRestoring || isConnecting} executing={fsmState === 'S2'} currentSessionId={sessionId} revision={handbook?.stats.total ?? 0} onConfirmed={() => { if (guideStepRef.current === 6) onboarding.close('done'); }} />}
       />
     </div>
   );

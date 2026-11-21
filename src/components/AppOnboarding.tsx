@@ -1,123 +1,76 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { XianMascot } from './XianMascot';
 import { OnboardingSceneTry } from './OnboardingSceneTry';
-import { GuideNarration, GuidePlaybackContext, type GuidePlayback } from './GuideNarration';
 import './app-onboarding.css';
 
-// Keep persisted IDs for the optional forms; the former rehearsal pages are retired.
-const pageSteps = [0, 5, 6, 7];
-const titles: Record<number, string> = {
-  6: '想长期做的事，也可以从小处开始',
-  7: '现在，开启你的第一条支线',
-};
-const examples = ['我有15分钟，在家想放松一下', '今天有点累，想做件轻松的小事'];
+// Preserve existing stored form IDs; 4 now opens the short demonstration.
+const pageSteps = [0, 4, 5, 6];
+const labels = ['认识支线', '试试玩法', '选点喜好', '留个心愿'];
 
-export function AppOnboarding({ step, onStep, onSkip, onFinish, onStart, returning, startPending, preferences, goals }: {
+export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goals }: {
   step: number;
   onStep: (step: number) => void;
   onSkip: () => void;
   onFinish: () => void;
-  onStart: (text: string) => void;
-  returning: boolean;
-  startPending: boolean;
   preferences: ReactNode;
   goals: ReactNode;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
-  const [phrase, setPhrase] = useState(examples[0]);
-  const [playback, setPlayback] = useState<GuidePlayback | null>(null);
   const [sceneCompleted, setSceneCompleted] = useState(false);
-  const [sceneReplay, setSceneReplay] = useState(0);
-  const pageIndex = pageSteps.indexOf(step);
-  const form = step === 5 || step === 6;
+  const pageIndex = Math.max(0, pageSteps.indexOf(step));
   useEffect(() => {
     setSceneCompleted(false);
-    setSceneReplay(0);
-    (root.current?.querySelector<HTMLElement>('#app-guide-title') || root.current)?.focus();
+    root.current?.querySelector<HTMLElement>('#app-guide-title')?.focus({ preventScroll: true });
     body.current?.scrollTo({ top: 0 });
   }, [step]);
-  useEffect(() => {
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); onSkip(); }
-    };
-    document.addEventListener('keydown', escape);
-    return () => document.removeEventListener('keydown', escape);
-  }, [onSkip]);
-  return <GuidePlaybackContext.Provider value={setPlayback}><div className="app-guide" ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={step === 0 ? '支线任务 · 使用指南' : step === 5 ? '记下喜好' : undefined} aria-labelledby={step === 0 || step === 5 ? undefined : 'app-guide-title'} onKeyDown={e => {
-    if (e.key === 'Escape') { e.preventDefault(); onSkip(); }
+  return <div className="app-guide app-guide-compact" ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="app-guide-title" onKeyDown={e => {
+    if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); onSkip(); }
     if (e.key !== 'Tab') return;
     const items = [...(root.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,textarea,select,summary,a[href],[tabindex="0"]') || [])].filter(el => el.getClientRects().length && el.tabIndex >= 0);
     const first = items[0], last = items[items.length - 1];
     if (e.shiftKey && (document.activeElement === first || document.activeElement === root.current || document.activeElement?.id === 'app-guide-title')) { e.preventDefault(); last?.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
   }}>
-    <div className={`app-guide-book ${form ? 'app-guide-form' : ''}`}>
-      <header className="app-guide-top">
-        <span>支线任务 · 使用指南</span>
-        <button onClick={onSkip}>跳过引导</button>
-      </header>
+    <div className="app-guide-book">
+      <header className="app-guide-top"><span>支线任务 · 快速上手</span><button onClick={onSkip}>跳过引导</button></header>
       <div className="app-guide-progress" aria-label={`应用引导，第 ${pageIndex + 1} 页，共 4 页`}>
         {pageSteps.map((id, index) => <i key={id} className={index <= pageIndex ? 'filled' : ''} />)}
       </div>
+      <div className="quick-guide-location"><span>{String(pageIndex + 1).padStart(2, '0')} / 04 · {labels[pageIndex]}</span>{pageIndex > 0 && <button onClick={() => onStep(pageSteps[pageIndex - 1])}>上一步</button>}</div>
       <div ref={body} className="app-guide-body">
-        <div className="app-guide-page">
-          {step !== 0 && step !== 5 && <div key={`heading-${step}`} className="app-guide-heading">
-            <h1 id="app-guide-title" tabIndex={-1}>{step === 7 && returning ? '随时可以回来，再试一次' : titles[step]}</h1>
+        <div className="app-guide-page" key={step}>
+          {step === 0 && <div className="quick-guide-intro">
+            <XianMascot size={112} />
+            <p className="quick-guide-eyebrow">下班后、等车时，或周末的空档</p>
+            <h1 id="app-guide-title" tabIndex={-1}>有一点空闲，<br />就来一条支线。</h1>
+            <p>告诉吱呀你在哪儿、有多少时间，<br />它帮你找件有趣、现在就能做的小事。</p>
+            <div className="quick-guide-example"><span>比如现在</span><p>“在家，有15分钟，想放松一下。”</p><strong>给桌上的小物办个展 →</strong></div>
+            <p className="quick-guide-footnote">选一个点子 · 跟着做 · 留下自己的小作品</p>
           </div>}
-          {step === 0 && <div className="app-guide-welcome">
-            <XianMascot variant="face" size={170} />
-            <GuideNarration floating scenes={{
-              4: <OnboardingSceneTry key={sceneReplay} scene="home" onComplete={() => setSceneCompleted(true)} />,
-            }} lines={[
-              '白天努力工作，晚上疲惫地刷刷手机，一天就这样结束了。',
-              '你是否也偶尔感到空虚和无聊，想让日子多一点值得期待的事？',
-              '或许，你可以为自己经营一些支线任务！下班、等车、周末，都是它的舞台。',
-              '想不出合适的事情做，让吱呀帮你想；不知道怎么迈出第一步，让吱呀来引导。',
-              '周末一个人在家，想做点有趣的事？试着告诉吱呀，看它怎么帮你策划一场桌上小物展。',
-              '告诉吱呀你在哪里、有多少时间、和谁一起，还有你的喜好与雷点，它就能帮你找到合适的玩法。',
-            ]}><p className="walk-slogan">生活有主线，快乐在支线</p></GuideNarration>
-          </div>}
-          {step === 5 && <div className="app-guide-real-form">{preferences}</div>}
-          {step === 6 && <GuideNarration key="form-6" lines={[
-            '总想着重新捡起画画，却很难空出一整个下午？可以把它写成一个心愿。',
-            '吱呀会拆成几章小任务。今天画一件小物，下次试一处光影，空闲时接着做。',
-            '写下愿望，吱呀会先记下来。具体安排可以之后在手册里查看，暂时没有想法也可以稍后再填。',
-          ]}><div className="app-guide-real-form">{goals}</div></GuideNarration>}
-          {step === 7 && <div className="app-guide-welcome">
-            <XianMascot variant="face" size={140} />
-            <GuideNarration lines={returning ? [
-              '上次的支线还在。现在有空的话，可以回到对话，接着做；状态变了，也可以告诉吱呀。',
-              '想不起怎么操作时，从「我的手册」打开使用指南，就能再看一次。',
-            ] : [
-              '下次下班想换换心情、午休想透口气，或周末想试点新鲜事，都可以来找吱呀。',
-              '现在选一句符合此刻情况的话，点「开始体验」。吱呀会按你的时间和状态，推荐真正可以去做的活动。',
-            ]}>{!returning && <div className="app-guide-options">{examples.map(text => <button key={text} aria-pressed={phrase === text} onClick={() => setPhrase(text)}>{text}</button>)}</div>}</GuideNarration>
-          </div>}
-      <div className="app-guide-controls" role="group" aria-label="引导控制">
-        {step === 0 && sceneCompleted ? <>
-          <button className="app-guide-back" onClick={() => { setSceneCompleted(false); setSceneReplay(value => value + 1); }}>再看一遍</button>
-          <button className="app-guide-next" onClick={() => onStep(5)}>下一步</button>
-        </> : step === 0 && playback?.checkpoint ? <button className="app-guide-next app-guide-scene-skip" onClick={() => onStep(5)}>跳过</button> : playback ? <>
-          <button className="app-guide-back app-guide-round" disabled={!playback.canPause} aria-label={playback.paused ? '继续播放' : '暂停'} title={playback.paused ? '继续播放' : '暂停'} onClick={playback.togglePause}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              {playback.paused ? <path d="m9 5 10 7-10 7Z" /> : <><path d="M8 5v14" /><path d="M16 5v14" /></>}
-            </svg>
-          </button>
-          <button className="app-guide-next guide-continue app-guide-round" aria-label="跳过这一步" title="跳过这一步" onClick={playback.advance}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m6 5 10 7-10 7Z" /><path d="M19 5v14" />
-            </svg>
-          </button>
-        </> : <>
-        {step > 0 && !form && <button className="app-guide-back" onClick={() => onStep(pageSteps[pageIndex - 1])}>上一页</button>}
-        {form ? <button className="app-guide-next" onClick={() => onStep(step + 1)}>这项稍后再填 →</button>
-          : step === 7 ? <button className="app-guide-next" disabled={startPending} onClick={returning ? onFinish : () => onStart(phrase)}>{startPending ? '正在连接…' : '开始体验'} →</button>
-          : <button className="app-guide-next" onClick={() => onStep(5)}>记下我的喜好 →</button>}
-        </>}
-      </div>
+          {step === 4 && <>
+            <h1 id="app-guide-title" tabIndex={-1}>一条支线，就这样开始</h1>
+            <p className="quick-guide-description">跟着点两下，看看从推荐到留下作品的过程。</p>
+            <OnboardingSceneTry scene="home" onComplete={() => setSceneCompleted(true)} />
+          </>}
+          {step === 5 && <>
+            <h1 id="app-guide-title" tabIndex={-1}>什么让你觉得有意思？</h1>
+            <p className="quick-guide-description">点几个喜欢的方向，让推荐更合心意。可多选。</p>
+            <div className="app-guide-real-form">{preferences}</div>
+          </>}
+          {step === 6 && <>
+            <h1 id="app-guide-title" tabIndex={-1}>有件事，想慢慢做到？</h1>
+            <p className="quick-guide-description">比如捡起画画。以后可以拆成小任务，空闲时做一点。</p>
+            <div className="app-guide-real-form">{goals}</div>
+          </>}
         </div>
       </div>
+      <div className="app-guide-controls quick-guide-footer" role="group" aria-label="引导控制">
+        {step === 0 ? <button className="app-guide-next" onClick={() => onStep(4)}>看看怎么玩 →</button>
+          : step === 4 ? <button className={sceneCompleted ? 'app-guide-next' : 'app-guide-back'} onClick={() => onStep(5)}>{sceneCompleted ? '下一步：选点喜好 →' : '跳过演示'}</button>
+          : step === 5 ? <button className="app-guide-back" onClick={() => onStep(6)}>暂时不选，下一步 →</button>
+          : <button className="app-guide-back" onClick={onFinish}>暂时没有，完成引导 →</button>}
+      </div>
     </div>
-  </div></GuidePlaybackContext.Provider>;
+  </div>;
 }

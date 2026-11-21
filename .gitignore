@@ -39,3 +39,4 @@ docs/screenshots.zip
 
 # Platform runtime logs
 .asteam-product.log*
+.cache/

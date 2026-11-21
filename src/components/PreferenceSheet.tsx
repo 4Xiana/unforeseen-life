@@ -19,6 +19,7 @@ interface Props {
   onSave: (input: SaveProfileInput) => Promise<void> | void;
   embedded?: boolean;
   guided?: boolean;
+  compact?: boolean;
   onSaved?: () => void;
 }
 
@@ -131,7 +132,7 @@ function GroupLabel({ children, hint }: { children: string; hint?: string }) {
   );
 }
 
-export function PreferenceSheet({ open, onClose, initial, pairs, onSave, embedded = false, guided = false, onSaved }: Props) {
+export function PreferenceSheet({ open, onClose, initial, pairs, onSave, embedded = false, guided = false, compact = false, onSaved }: Props) {
   const [page, setPage] = useState<'form' | 'pairs'>('form');
   const [energy, setEnergy] = useState<EnergyPref>('any');
   const [novelty, setNovelty] = useState<NoveltyPref>(0);
@@ -244,6 +245,24 @@ export function PreferenceSheet({ open, onClose, initial, pairs, onSave, embedde
   const answeredCount = pairs.filter((p) => pairVotes[p.id]).length;
   const allPairsAnswered = answeredCount === pairs.length;
   const pair = pairs[pairIdx];
+
+  if (compact) {
+    const choices = ['散步探索', '手工创作', '观察记录', '整理小物', '感官放松', '和人互动'];
+    const selected = interests.split(/[、,，;；\n]/).map(item => item.trim()).filter(Boolean);
+    return <form className="quick-preferences" onSubmit={e => { e.preventDefault(); void submit(pairVotes); }}>
+      <fieldset disabled={saving}>
+        <legend className="sr-only">你喜欢的方向</legend>
+        <div className="quick-preference-chips">{choices.map(choice => <button type="button" key={choice} aria-pressed={selected.includes(choice)} onClick={() => setInterests((selected.includes(choice) ? selected.filter(item => item !== choice) : [...selected, choice]).join('、'))}>{choice}</button>)}</div>
+        <details className="quick-preference-more"><summary>补充兴趣或不想做的事（选填）</summary>
+          <label>兴趣<input maxLength={500} value={interests} onChange={e => setInterests(e.target.value)} placeholder="比如音乐、植物" /></label>
+          <label>不想做的事<input maxLength={500} value={avoids} onChange={e => setAvoids(e.target.value)} placeholder="比如不拍照、不想出门" /></label>
+        </details>
+        <p className="quick-guide-footnote">之后在「我的手册 → 喜好」随时调整。</p>
+        <button className="walk-primary quick-form-submit" type="submit">{saving ? '正在保存…' : '保存喜好，下一步 →'}</button>
+      </fieldset>
+      {feedback && <p role="alert" className="quick-guide-error">{feedback}</p>}
+    </form>;
+  }
 
   return (
     <div className={[embedded ? 'preferences-embedded' : 'viewport-overlay fixed inset-0 z-50', guided ? 'preferences-guided' : ''].join(' ')}>
