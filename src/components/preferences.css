@@ -23,12 +23,14 @@
 .basic-choice-group button[aria-pressed=true] { border-color: var(--moss-deep); background: #edf1e2; color: var(--moss-deep); }
 .basic-choice-group > .mbti-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .mbti-grid button { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
-.mbti-group { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.mbti-group.mbti-green { --mbti-color: #436a45; }
-.mbti-group.mbti-yellow { --mbti-color: #98722c; }
-.mbti-group.mbti-blue { --mbti-color: #3e6c85; }
-.mbti-group.mbti-purple { --mbti-color: #77538c; }
-.mbti-swatch { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; background: var(--mbti-color); }
+.mbti-group { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.mbti-group-avatars { display: flex; justify-content: center; width: 100%; max-width: 144px; }
+.mbti-group-avatars img { display: block; width: 25%; height: 44px; object-fit: contain; }
+.mbti-group-label { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.mbti-role { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: left; }
+.mbti-role img { display: block; flex-shrink: 0; width: 40px; height: 56px; object-fit: contain; }
+.mbti-role-label { display: flex; flex-direction: column; min-width: 0; }
+.mbti-role-name { font-size: 13px; }
 .mbti-code, .mbti-group-note, .identity-note { font-size: 13px; color: var(--ink-2); }
 .identity-note { margin-left: 8px; }
 .basic-choice-group > .mbti-controls { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

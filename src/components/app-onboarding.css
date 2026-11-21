@@ -260,7 +260,7 @@
   font-size: 13px; color: var(--ink-2);
 }
 .app-guide.app-guide-compact :is(.preference-error,.quick-guide-error) { color: #a44132; }
-.app-guide.app-guide-compact :is(.mbti-code,.mbti-group-note,.identity-note,.mbti-controls button) { font-size: 13px; }
+.app-guide.app-guide-compact :is(.mbti-code,.mbti-group-note,.mbti-role-name,.identity-note,.mbti-controls button) { font-size: 13px; }
 .app-guide-compact .app-guide-book { height: min(780px, 100%); border-color: var(--surface-line); }
 .app-guide-compact .app-guide-top nav { display: flex; gap: 8px; }
 .app-guide-compact .app-guide-progress { gap: 6px; padding-bottom: 16px; }

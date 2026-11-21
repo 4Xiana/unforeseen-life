@@ -16,8 +16,8 @@ export function IdentityPreferences({ value, onChange }: { value: SaveProfileInp
       <legend>你的 MBTI 是什么？</legend>
       {group && <div className="mbti-controls"><span className="mbti-group-note">{group.label} · {group.code}</span><button type="button" onClick={() => setGroupId(null)}>重新选分组</button></div>}
       <div className="mbti-grid">
-        {group ? group.types.map(type => <button type="button" key={type.code} aria-pressed={value.mbti === type.code} onClick={() => onChange({ mbti: value.mbti === type.code ? null : type.code })}>{type.code} · {type.label}</button>)
-          : MBTI_GROUPS.map(item => <button type="button" key={item.id} className={`mbti-group mbti-${item.id}`} onClick={() => setGroupId(item.id)}><span className="mbti-swatch" aria-hidden />{item.label}<span className="mbti-code">{item.code}</span></button>)}
+        {group ? group.types.map(type => <button type="button" className="mbti-role" key={type.code} aria-label={`${type.code} · ${type.label}`} aria-pressed={value.mbti === type.code} onClick={() => onChange({ mbti: value.mbti === type.code ? null : type.code })}><img src={`/images/mbti/${type.code}.svg`} alt="" width="40" height="56" /><span className="mbti-role-label"><span>{type.code}</span><span className="mbti-role-name">{type.label}</span></span></button>)
+          : MBTI_GROUPS.map(item => <button type="button" key={item.id} className="mbti-group" onClick={() => setGroupId(item.id)}><span className="mbti-group-avatars" aria-hidden="true">{item.types.map(type => <img key={type.code} src={`/images/mbti/${type.code}.svg`} alt="" width="30" height="44" />)}</span><span className="mbti-group-label">{item.label}<span className="mbti-code">{item.code}</span></span></button>)}
       </div>
       <div className="mbti-controls"><button type="button" onClick={() => { onChange({ mbti: null }); setGroupId(null); }}>还不确定</button></div>
     </fieldset>
