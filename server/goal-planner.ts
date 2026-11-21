@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OpenAI } from 'openai';
+import { chatRequestOptions } from './model-config.js';
 import type { GoalInput, GoalPlan } from './goals-types.js';
 import { exampleInput } from './goals-types.js';
 import { buildProfileBrief, type UserProfile } from './agent/profile/profile.js';
@@ -86,6 +87,7 @@ export async function generateGoalPlan(input: GoalInput, profile?: UserProfile):
   // 结构不合格时只修正一次；始终保留原目标与档案，不降级为无关模板。
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await client.chat.completions.create({
+      ...chatRequestOptions(),
       model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
       response_format: { type: 'json_object' },
       messages,

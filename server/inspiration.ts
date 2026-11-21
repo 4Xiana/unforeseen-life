@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OpenAI } from 'openai';
+import { chatRequestOptions } from './model-config.js';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
@@ -111,6 +112,7 @@ export async function extractInspiration(text: string) {
   if (!process.env.OPENAI_API_KEY) throw new Error('AI 暂时没有配置，你的输入已保留。');
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL, timeout: 60000, maxRetries: 0 });
   const result = await client.chat.completions.create({
+    ...chatRequestOptions(),
     model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
     response_format: { type: 'json_object' },
     messages: [

@@ -153,7 +153,9 @@ cp server/.env.example server/.env
 | `MINIMAX_API_KEY` | 可选，启用吱呀语音合成 |
 | `MINIMAX_TTS_MODEL`、`MINIMAX_VOICE_ID`、`MINIMAX_API_BASE` | 可选，语音合成的模型、声音和服务地址 |
 
-模板当前给出了 MiniMax 服务配置。更换服务时应同时核对工具调用、流式输出和照片输入的兼容性，不保证任意兼容端点均可直接替换。
+模板使用 DeepSeek 官方服务 `https://api.deepseek.com` 和 `deepseek-flash`。DeepSeek 请求关闭思考模式，以保持即时对话和强制工具验收的兼容；主对话、心愿规划、灵感整理和证物验收共用配置。模型名称与能力以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。
+
+产品的 `server/.env` 中模型配置优先于沙箱继承的模型默认值，平台注入的 `PORT` 始终优先。密钥文件不入库，文件权限建议设为 `600`。使用 DeepSeek 时设置 `OPENAI_AGENTS_DISABLE_TRACING=1`，关闭 OpenAI 托管追踪，保留产品自身的本地调试记录。更换服务时应同时核对工具调用、流式输出和照片输入的兼容性。
 
 ### 本地开发
 
@@ -314,6 +316,7 @@ flowchart TD
 | `npm run test:persistence` | 会话落盘、恢复、隔离、去重和服务中断 |
 | `npm run test:preferences` | 问卷结构、拟合、兼容与保存 |
 | `npm run test:goals` | 心愿章节、约束、归属、结算与恢复 |
+| `npm run test:models` | 产品模型配置优先级、平台端口保留及 DeepSeek 参数兼容 |
 | `npm run test:speech` | 语音识别状态、取消、竞态和错误处理 |
 | `npm run test:task-ui` | 选前对话、选后任务、辅助对话、提交重试和草稿保持 |
 | `npm run test:onboarding` | 首次引导、跳过、保存失败及恢复 |

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
@@ -376,7 +376,7 @@ app.post('/api/session/:id/photo', (req, res, next) => {
   const parsedElapsed = Number(req.body?.elapsedSeconds);
   const elapsedSeconds = Number.isFinite(parsedElapsed) && parsedElapsed > 0 ? parsedElapsed : undefined;
 
-  // 照片随当轮消息以多模态 part 喂给模型（deepseek-chat 支持视觉 + 工具调用）；
+  // 照片随当轮消息以多模态 part 喂给模型；配置的模型需支持视觉与工具调用。
   // multer 为 diskStorage，照片已存到 data/evidence/，读回字节转 base64 喂模型，
   // 同时保留可访问 URL 供持久化到记录页。
   let imageDataUrl: string | undefined;
