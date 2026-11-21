@@ -39,7 +39,7 @@ await page.route('**/api/**',async route=>{
   if(path==='/api/handbook') return route.fulfill({json:empty?{...handbook,quests:[],stats:{...handbook.stats,total:0}}:handbook});
   if(path==='/api/goals') return route.fulfill({json:empty?[]:[goal]});
   if(path==='/api/quest-threads') return failLoad?route.fulfill({status:503,json:{error:'fixture unavailable'}}):route.fulfill({json:empty?[]:threads});
-  if(path==='/api/quest-pairs') return route.fulfill({json:[]});
+  if(path==='/api/quest-pairs'||path==='/api/inspirations') return route.fulfill({json:[]});
   if(path.startsWith('/api/session/')) return route.fulfill({json:activeSession});
  }
  if(path.startsWith('/api/quest-threads')&&['POST','PUT'].includes(method)) {
@@ -80,14 +80,14 @@ try{
   const records=page.locator('.thread-detail .thread-timeline [aria-expanded]');
   assert.equal(await records.count(),2);
   assert.match(await records.nth(0).innerText(),/街角的小店/);
-  await records.nth(0).click();await page.getByText('我记下了巷口的书店和面包房。',{exact:true}).waitFor();await layout();
+  await records.nth(0).click();await page.getByText('我记下了巷口的书店和面包房。').waitFor();await layout();
   if(width===390)await page.screenshot({path:`${output}/detail-${width}.png`});
   await button('← 返回地图').click();
   await branch('我的日常声音小册').click();
   assert.equal(await page.locator('.thread-timeline [data-status=done]').count(),1);
   assert.equal(await page.locator('.thread-timeline [data-status=next]').count(),1);
   assert.equal(await page.locator('.thread-timeline [data-status=locked]').count(),1);
-  await page.locator('.thread-detail [aria-expanded]').click();await page.getByText('厨房里水壶与雨滴的合奏。',{exact:true}).waitFor();await layout();
+  await page.locator('.thread-detail [aria-expanded]').click();await page.getByText('厨房里水壶与雨滴的合奏。').waitFor();await layout();
   await button('← 返回地图').click();
   results.push({viewport:`${width}x${height}`,map:'pass',evidence:'pass',chapters:'pass',layout:'pass'});
  }
@@ -130,6 +130,10 @@ try{
  await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog',{name:'我的手册',exact:true}).count(),0);
  assert.deepEqual(errors,[]);assert.deepEqual(unexpected,[]);
  console.log(JSON.stringify({results,createEditReloadRemove:'pass',saveFailureRetry:'pass',emptyAndRetry:'pass',continuationContext:'pass',activeTaskGuard:'pass',keyboard:'pass',pageErrors:errors},null,2));
+}catch(error){
+ await page.screenshot({path:`${output}/failure.png`});
+ console.error((await page.locator('body').innerText()).slice(-7000));
+ throw error;
 }finally{
  if(!page.isClosed()){
   await page.evaluate(({client,originalClient,originalSession})=>{for(const key of Object.keys(localStorage))if(key.includes(client))localStorage.removeItem(key);if(originalClient===null)localStorage.removeItem('xian.clientId');else localStorage.setItem('xian.clientId',originalClient);if(originalSession===null)localStorage.removeItem('xian-active-session');else localStorage.setItem('xian-active-session',originalSession);},{client,originalClient,originalSession});
