@@ -56,7 +56,7 @@ export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goa
             <div className="app-guide-real-form">{preferences}</div>
           </>}
           {step === 6 && <>
-            <h1 id="app-guide-title" tabIndex={-1}>有什么一直想试试？</h1>
+            <h1 id="app-guide-title" tabIndex={-1}>有哪些想要开启的支线任务？</h1>
             <div className="app-guide-real-form">{goals}</div>
           </>}
         </div>
