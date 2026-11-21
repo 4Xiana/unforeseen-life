@@ -42,25 +42,25 @@ export function AppOnboarding({ step, onStep, onSkip, onFinish, preferences, goa
         <div className="app-guide-page" key={step}>
           {step === 0 && <div className="quick-guide-intro">
             <XianMascot size={112} />
-            <p className="quick-guide-eyebrow">下班后、等车时，或周末的空档</p>
-            <h1 id="app-guide-title" tabIndex={-1}>有一点空闲，<br />就来一条支线。</h1>
-            <p>告诉吱呀你在哪儿、有多少时间，<br />它帮你找件有趣、现在就能做的小事。</p>
-            <div className="quick-guide-example"><span>比如现在</span><p>“在家，有15分钟，想放松一下。”</p><strong>给桌上的小物办个展 →</strong></div>
-            <p className="quick-guide-footnote">选一个点子 · 跟着做 · 留下自己的小作品</p>
+            <p className="quick-guide-eyebrow">日常里，还有很多有趣的事等你发现</p>
+            <h1 id="app-guide-title" tabIndex={-1}>从一点好奇，<br />开启一条支线。</h1>
+            <p>说说你想试什么，没想法也可以。<br />吱呀帮你发现有趣、能动手做的事。</p>
+            <div className="quick-guide-example"><span>比如，你想试试创作</span><p>“想在家试点有创意的事。”</p><strong>给桌上的小物办个展 →</strong></div>
+            <p className="quick-guide-footnote">发现一个点子 · 动手试试 · 留下自己的作品</p>
           </div>}
           {step === 4 && <>
             <h1 id="app-guide-title" tabIndex={-1}>一条支线，就这样开始</h1>
-            <p className="quick-guide-description">跟着点两下，看看从推荐到留下作品的过程。</p>
+            <p className="quick-guide-description">跟着点两下，体验从发现点子到动手完成的过程。</p>
             <OnboardingSceneTry scene="home" onComplete={() => setSceneCompleted(true)} />
           </>}
           {step === 5 && <>
             <h1 id="app-guide-title" tabIndex={-1}>先记两点基本喜好</h1>
-            <p className="quick-guide-description">活动节奏和预算，点两下就好。不确定可以跳过。</p>
+            <p className="quick-guide-description">选个活动节奏和预算，让推荐更合你意。不确定可以跳过。</p>
             <div className="app-guide-real-form">{preferences}</div>
           </>}
           {step === 6 && <>
             <h1 id="app-guide-title" tabIndex={-1}>有件事，想慢慢做到？</h1>
-            <p className="quick-guide-description">比如捡起画画。以后可以拆成小任务，空闲时做一点。</p>
+            <p className="quick-guide-description">比如重新捡起画画。先记下来，之后再去心愿里安排小任务。</p>
             <div className="app-guide-real-form">{goals}</div>
           </>}
         </div>

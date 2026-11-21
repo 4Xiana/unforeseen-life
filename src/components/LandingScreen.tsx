@@ -145,7 +145,7 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
   const handleGo = () => {
     if (busy) return;
     voice.reset();
-    onStart(text.trim() || '我有15分钟空闲，你看着安排吧');
+    onStart(text.trim() || '想探索点有趣的事，先推荐一条15分钟能做的支线吧');
   };
 
   const listening = voice.listening;
@@ -184,8 +184,9 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
                 </div>
               ) : (
                 <p className="text-ink-2 text-[13.5px] leading-[1.9] text-center">
-                  和我讲讲你现在的位置，有多少空闲吧<br />
-                  让吱呀带你出发～
+                  想发现点有趣的事？<br />
+                  说说你好奇什么，没想法也可以。<br />
+                  时间和地点，帮我找到更适合你的支线。
                 </p>
               )}
             </div>
@@ -221,6 +222,10 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
           </div>
         ) : (
           <div key="keyboard" className="animate-fade-in flex flex-col pt-1 pb-10">
+            <p className="text-ink-2 text-[13.5px] leading-[1.9] text-center mb-3">
+              想试点什么？没想法也可以。<br />
+              选些条件，吱呀帮你发现有趣的支线。
+            </p>
             <div className="landing-intake bg-card border-2 border-paper-edge/80 rounded-3xl p-3 sm:p-4 shadow-paper">
               {INTAKE_GROUPS.map((g, gi) => (
                 <div
@@ -249,11 +254,11 @@ export function LandingScreen({ onStart, onResume, busy = false, onOpenLibrary, 
               <input
                 id="landing-text-input"
                 type="text"
-                aria-label="位置、空闲时间和同行的人"
+                aria-label="想探索的事，也可以补充时间、地点和同行的人"
                 value={text}
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleGo()}
-                placeholder="点上面的词填进来，也可以直接打字跟我说"
+                placeholder="想试试什么？或说说你在哪儿"
                 className="w-full bg-card border-2 border-paper-edge/80 rounded-full pl-4 pr-12 py-3 text-[13.5px] text-ink focus:border-moss focus:outline-none placeholder:text-fog/50"
               />
               <button

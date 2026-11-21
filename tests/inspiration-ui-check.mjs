@@ -33,8 +33,8 @@ try {
     assert.equal(await card.locator('.inspiration-original').innerText(), raw);
     if (width === 320) {
       await page.getByRole('button', { name: '关闭我的手册' }).click();
-      if (!await page.getByRole('textbox', { name: '位置、空闲时间和同行的人' }).count()) await page.getByRole('button', { name: '改用键盘输入' }).click();
-      await page.getByRole('textbox', { name: '位置、空闲时间和同行的人' }).fill('我在家有15分钟，一个人，不花钱');
+      if (!await page.getByRole('textbox', { name: '想探索的事，也可以补充时间、地点和同行的人' }).count()) await page.getByRole('button', { name: '改用键盘输入' }).click();
+      await page.getByRole('textbox', { name: '想探索的事，也可以补充时间、地点和同行的人' }).fill('我在家有15分钟，一个人，不花钱');
       await page.getByRole('button', { name: '发送，让吱呀带你出发' }).click();
       await page.locator('.ticket-card').filter({ hasText: `我的秋日拼贴${width}` }).waitFor();
       assert.equal(await page.locator('.ticket-card').count(), 2);

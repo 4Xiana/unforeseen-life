@@ -13,9 +13,9 @@ export function OnboardingSceneTry({ scene: _scene, onComplete }: { scene: 'home
   return <section className="quick-demo" ref={root} aria-label="支线玩法演示">
     <p className="quick-guide-footnote">互动示例 · 不会写入你的正式记录</p>
     <ol className="quick-demo-track" aria-label="支线流程">
-      {['说说情况', '挑条支线', '做完留痕'].map((label, index) => <li key={label} className={index <= (phase === 'pick' ? 1 : 2) ? 'current' : ''}><span aria-hidden>{index + 1}</span>{label}</li>)}
+      {['聊聊想法', '挑条支线', '做完留痕'].map((label, index) => <li key={label} className={index <= (phase === 'pick' ? 1 : 2) ? 'current' : ''}><span aria-hidden>{index + 1}</span>{label}</li>)}
     </ol>
-    <div className="quick-demo-message"><span>你</span><p>在家，有15分钟，想放松一下。</p></div>
+    <div className="quick-demo-message"><span>你</span><p>想在家试点有创意的事。</p></div>
     <div className="quick-demo-task">
       <span className="quick-guide-eyebrow">吱呀的推荐 · 创造 · 约10分钟</span>
       <h2>给桌上的小物办个展</h2>
